@@ -5,7 +5,8 @@
 #include <linux/power_supply.h>
 
 enum bq27xxx_chip {
-	BQ27000 = 1, /* bq27000, bq27200 */
+	BQ27000 = 1, /* bq27000 */
+	BQ27200,     /* bq27200, bq27220 */
 	BQ27010, /* bq27010, bq27210 */
 	BQ2750X, /* bq27500 deprecated alias */
 	BQ2751X, /* bq27510, bq27520 deprecated alias */

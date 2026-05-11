@@ -1,0 +1,517 @@
+#!/usr/bin/env python3
+import argparse
+import os
+import re
+import shutil
+import sys
+import tempfile
+from datetime import datetime
+from collections import defaultdict
+
+DEFAULT_CONFIG = "/boot/firmware/config.txt"
+
+SECTION_RE = re.compile(r"^\s*\[([^\]]+)\]\s*(?:#.*)?$")
+ACTIVE_RE = re.compile(r"^(\s*)([A-Za-z0-9_.+-]+)\s*=\s*(.*?)\s*$")
+COMMENTED_RE = re.compile(r"^(\s*)#\s*([A-Za-z0-9_.+-]+)\s*=\s*(.*?)\s*$")
+
+
+def strip_inline_comment(value: str) -> str:
+    """
+    去掉类似:
+        dtoverlay=gpio-ir,gpio_pin=13 # comment
+    后面的注释。
+    """
+    return re.sub(r"\s+#.*$", "", value).strip()
+
+
+def parse_config_line(line):
+    """
+    返回:
+    {
+        "active": True/False,
+        "indent": "...",
+        "key": "...",
+        "value": "..."
+    }
+
+    普通注释、空行、section 行返回 None。
+    """
+    if SECTION_RE.match(line):
+        return None
+
+    m = COMMENTED_RE.match(line)
+    if m:
+        return {
+            "active": False,
+            "indent": m.group(1),
+            "key": m.group(2),
+            "value": m.group(3).strip(),
+        }
+
+    m = ACTIVE_RE.match(line)
+    if m:
+        return {
+            "active": True,
+            "indent": m.group(1),
+            "key": m.group(2),
+            "value": m.group(3).strip(),
+        }
+
+    return None
+
+
+def read_lines(path):
+    if not os.path.exists(path):
+        print(f"错误：文件不存在：{path}", file=sys.stderr)
+        sys.exit(1)
+
+    with open(path, "r", encoding="utf-8") as f:
+        return f.readlines()
+
+
+def write_lines(path, lines):
+    """
+    原子写入，并自动备份。
+    """
+    backup = f"{path}.bak-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    shutil.copy2(path, backup)
+
+    st = os.stat(path)
+    directory = os.path.dirname(path)
+
+    fd, tmp_path = tempfile.mkstemp(prefix=".config.txt.", dir=directory)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.writelines(lines)
+
+        os.chmod(tmp_path, st.st_mode)
+        os.replace(tmp_path, path)
+
+        print(f"已修改：{path}")
+        print(f"已备份：{backup}")
+    except PermissionError:
+        try:
+            os.unlink(tmp_path)
+        except Exception:
+            pass
+        print("权限不足，请使用 sudo 执行。", file=sys.stderr)
+        sys.exit(1)
+    except Exception:
+        try:
+            os.unlink(tmp_path)
+        except Exception:
+            pass
+        raise
+
+
+def make_line(key, value, indent=""):
+    return f"{indent}{key}={value}\n"
+
+
+def make_commented_line(line):
+    """
+    把一个未注释配置行注释掉。
+    """
+    if line.lstrip().startswith("#"):
+        return line
+
+    indent_len = len(line) - len(line.lstrip())
+    indent = line[:indent_len]
+    rest = line[indent_len:]
+    return f"{indent}# {rest}"
+
+
+def set_key_value(lines, pair):
+    """
+    pi-config set kernel=u-boot.bin
+
+    行为：
+    1. 如果已有 active 的 kernel=xxx，则改成 kernel=u-boot.bin
+    2. 如果只有注释的 # kernel=xxx，则恢复成 kernel=u-boot.bin
+    3. 如果完全没有，则添加到全局区域，也就是第一个 [section] 之前
+    """
+    if "=" not in pair:
+        print("错误：set 参数必须是 key=value 形式，例如：kernel=u-boot.bin", file=sys.stderr)
+        sys.exit(1)
+
+    key, value = pair.split("=", 1)
+    key = key.strip()
+    value = value.strip()
+
+    if not key:
+        print("错误：key 不能为空", file=sys.stderr)
+        sys.exit(1)
+
+    active_idx = None
+    commented_idx = None
+
+    for i, line in enumerate(lines):
+        info = parse_config_line(line)
+        if not info:
+            continue
+
+        if info["key"] == key:
+            if info["active"] and active_idx is None:
+                active_idx = i
+            elif not info["active"] and commented_idx is None:
+                commented_idx = i
+
+    if active_idx is not None:
+        old = lines[active_idx]
+        info = parse_config_line(old)
+        new = make_line(key, value, info["indent"])
+        if old == new:
+            print(f"无需修改：{key} 已经是 {value}")
+            return lines, False
+
+        lines[active_idx] = new
+        print(f"已设置：{key}={value}")
+        return lines, True
+
+    if commented_idx is not None:
+        info = parse_config_line(lines[commented_idx])
+        lines[commented_idx] = make_line(key, value, info["indent"])
+        print(f"已恢复注释配置：{key}={value}")
+        return lines, True
+
+    insert_idx = find_global_insert_index(lines)
+    lines.insert(insert_idx, make_line(key, value))
+    print(f"已添加：{key}={value}")
+    return lines, True
+
+
+def unset_key(lines, key):
+    """
+    pi-config unset kernel
+
+    行为：
+    把所有 active 的 kernel=xxx 注释掉。
+    """
+    key = key.strip()
+    if not key:
+        print("错误：key 不能为空", file=sys.stderr)
+        sys.exit(1)
+
+    changed = False
+
+    for i, line in enumerate(lines):
+        info = parse_config_line(line)
+        if not info:
+            continue
+
+        if info["key"] == key and info["active"]:
+            lines[i] = make_commented_line(line)
+            changed = True
+
+    if changed:
+        print(f"已注释：{key}")
+    else:
+        print(f"未找到未注释的配置：{key}")
+
+    return lines, changed
+
+
+def find_global_insert_index(lines):
+    """
+    全局区域是第一个 [section] 之前。
+    """
+    for i, line in enumerate(lines):
+        if SECTION_RE.match(line):
+            return i
+    return len(lines)
+
+
+def find_section_range(lines, section):
+    """
+    返回 section 内容区域的 start, end。
+    start 是 section 行之后的位置。
+    end 是下一个 section 之前的位置。
+
+    如果 section 不存在，返回 None。
+    """
+    section = section.lower()
+    start = None
+
+    for i, line in enumerate(lines):
+        m = SECTION_RE.match(line)
+        if not m:
+            continue
+
+        name = m.group(1).strip().lower()
+        if name == section:
+            start = i + 1
+            continue
+
+        if start is not None:
+            return start, i
+
+    if start is not None:
+        return start, len(lines)
+
+    return None
+
+
+def ensure_section(lines, section):
+    """
+    确保存在 [section]，返回该 section 的插入位置。
+    """
+    rng = find_section_range(lines, section)
+    if rng:
+        start, end = rng
+        return end
+
+    if lines and lines[-1].strip():
+        lines.append("\n")
+
+    lines.append(f"[{section}]\n")
+    return len(lines)
+
+
+def dtoverlay_add(lines, value, section="all"):
+    """
+    pi-config dtoverlay add gpio-ir,gpio_pin=13,gpio_pull=up
+
+    行为：
+    1. 如果已经存在未注释的完全相同 dtoverlay，则不改
+    2. 如果存在注释掉的完全相同 dtoverlay，则恢复
+    3. 如果不存在，则添加到 [all] 区域
+    """
+    value = value.strip()
+    if not value:
+        print("错误：dtoverlay 值不能为空", file=sys.stderr)
+        sys.exit(1)
+
+    commented_idx = None
+
+    for i, line in enumerate(lines):
+        info = parse_config_line(line)
+        if not info:
+            continue
+
+        if info["key"] == "dtoverlay" and strip_inline_comment(info["value"]) == value:
+            if info["active"]:
+                print(f"无需修改：dtoverlay={value} 已存在")
+                return lines, False
+            else:
+                if commented_idx is None:
+                    commented_idx = i
+
+    if commented_idx is not None:
+        info = parse_config_line(lines[commented_idx])
+        lines[commented_idx] = make_line("dtoverlay", value, info["indent"])
+        print(f"已恢复：dtoverlay={value}")
+        return lines, True
+
+    insert_idx = ensure_section(lines, section)
+    lines.insert(insert_idx, make_line("dtoverlay", value))
+    print(f"已添加到 [{section}]：dtoverlay={value}")
+    return lines, True
+
+
+def dtoverlay_del(lines, value):
+    """
+    pi-config dtoverlay del gpio-ir,gpio_pin=13,gpio_pull=up
+
+    行为：
+    删除所有完全匹配的 dtoverlay 行。
+    包括未注释和已注释的。
+    """
+    value = value.strip()
+    if not value:
+        print("错误：dtoverlay 值不能为空", file=sys.stderr)
+        sys.exit(1)
+
+    new_lines = []
+    removed = 0
+
+    for line in lines:
+        info = parse_config_line(line)
+        if info and info["key"] == "dtoverlay" and strip_inline_comment(info["value"]) == value:
+            removed += 1
+            continue
+
+        new_lines.append(line)
+
+    if removed:
+        print(f"已删除 {removed} 行：dtoverlay={value}")
+        return new_lines, True
+    else:
+        print(f"未找到：dtoverlay={value}")
+        return lines, False
+
+
+def classify_key(key):
+    if key == "kernel":
+        return "boot/kernel"
+    if key == "dtparam":
+        return "dtparam"
+    if key == "dtoverlay":
+        return "dtoverlay"
+    if key in {
+        "camera_auto_detect",
+        "display_auto_detect",
+        "auto_initramfs",
+        "disable_fw_kms_setup",
+        "arm_64bit",
+        "disable_overscan",
+        "arm_boost",
+        "enable_uart",
+        "max_framebuffers",
+    }:
+        return "system"
+    return "other"
+
+
+def show_config(lines, path=DEFAULT_CONFIG):
+    """
+    按 section 和类型分类打印。
+    """
+    sections = []
+    current = {
+        "name": "global",
+        "items": defaultdict(list),
+        "disabled": [],
+    }
+    sections.append(current)
+
+    for lineno, line in enumerate(lines, start=1):
+        m = SECTION_RE.match(line)
+        if m:
+            current = {
+                "name": m.group(1).strip(),
+                "items": defaultdict(list),
+                "disabled": [],
+            }
+            sections.append(current)
+            continue
+
+        info = parse_config_line(line)
+        if not info:
+            continue
+
+        item = {
+            "lineno": lineno,
+            "key": info["key"],
+            "value": info["value"],
+            "text": f"{info['key']}={info['value']}",
+        }
+
+        if info["active"]:
+            group = classify_key(info["key"])
+            current["items"][group].append(item)
+        else:
+            current["disabled"].append(item)
+
+    print()
+    print("=" * 72)
+    print(f"配置文件：{path}")
+    print("=" * 72)
+
+    for sec in sections:
+        has_content = bool(sec["items"]) or bool(sec["disabled"])
+        if not has_content:
+            continue
+
+        print()
+        print(f"[{sec['name']}]")
+
+        order = [
+            "boot/kernel",
+            "system",
+            "dtparam",
+            "dtoverlay",
+            "other",
+        ]
+
+        for group in order:
+            items = sec["items"].get(group, [])
+            if not items:
+                continue
+
+            print(f"  {group}:")
+            for item in items:
+                print(f"    L{item['lineno']:<4} {item['text']}")
+
+        if sec["disabled"]:
+            print("  disabled/commented:")
+            for item in sec["disabled"]:
+                print(f"    L{item['lineno']:<4} # {item['text']}")
+
+    print()
+    print("=" * 72)
+
+
+def build_parser():
+    parser = argparse.ArgumentParser(
+        prog="pi-config",
+        description="Manage Raspberry Pi /boot/firmware/config.txt",
+    )
+
+    parser.add_argument(
+        "-f",
+        "--file",
+        default=DEFAULT_CONFIG,
+        help=f"配置文件路径，默认：{DEFAULT_CONFIG}",
+    )
+
+    sub = parser.add_subparsers(dest="command")
+
+    p_set = sub.add_parser("set", help="设置 key=value，若被注释则恢复，若不存在则添加")
+    p_set.add_argument("pair", help="例如：kernel=u-boot.bin")
+
+    p_unset = sub.add_parser("unset", help="注释某个 key")
+    p_unset.add_argument("key", help="例如：kernel")
+
+    p_dto = sub.add_parser("dtoverlay", help="管理 dtoverlay")
+    dto_sub = p_dto.add_subparsers(dest="dto_command", required=True)
+
+    p_dto_add = dto_sub.add_parser("add", help="添加 dtoverlay")
+    p_dto_add.add_argument("value", help="例如：gpio-ir,gpio_pin=13,gpio_pull=up")
+    p_dto_add.add_argument(
+        "--section",
+        default="all",
+        help="添加到哪个 section，默认：all",
+    )
+
+    p_dto_del = dto_sub.add_parser("del", help="删除 dtoverlay")
+    p_dto_del.add_argument("value", help="例如：gpio-ir,gpio_pin=13,gpio_pull=up")
+
+    sub.add_parser("show", help="分类格式化显示配置")
+
+    return parser
+
+
+def main():
+    parser = build_parser()
+    args = parser.parse_args()
+
+    path = args.file
+    lines = read_lines(path)
+
+    changed = False
+
+    if args.command is None or args.command == "show":
+        show_config(lines, path)
+        return
+
+    if args.command == "set":
+        lines, changed = set_key_value(lines, args.pair)
+
+    elif args.command == "unset":
+        lines, changed = unset_key(lines, args.key)
+
+    elif args.command == "dtoverlay":
+        if args.dto_command == "add":
+            lines, changed = dtoverlay_add(lines, args.value, section=args.section)
+        elif args.dto_command == "del":
+            lines, changed = dtoverlay_del(lines, args.value)
+
+    if changed:
+        write_lines(path, lines)
+
+    fresh_lines = read_lines(path)
+    show_config(fresh_lines, path)
+
+
+if __name__ == "__main__":
+    main()

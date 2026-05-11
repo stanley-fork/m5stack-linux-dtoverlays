@@ -159,6 +159,27 @@ static u8
 		[BQ27XXX_DM_DATA] = INVALID_REG_ADDR,
 		[BQ27XXX_DM_CKSUM] = INVALID_REG_ADDR,
 	},
+	bq27200_regs[BQ27XXX_REG_MAX] = {
+		[BQ27XXX_REG_CTRL] = 0x00,
+		[BQ27XXX_REG_TEMP] = 0x06,
+		[BQ27XXX_REG_INT_TEMP] = 0x28,
+		[BQ27XXX_REG_VOLT] = 0x08,
+		[BQ27XXX_REG_AI] = 0x14,       /* AverageCurrent */
+		[BQ27XXX_REG_FLAGS] = 0x0a,     /* BatteryStatus */
+		[BQ27XXX_REG_TTE] = 0x16,       /* AtRateTimeToEmpty */
+		[BQ27XXX_REG_TTF] = INVALID_REG_ADDR,
+		[BQ27XXX_REG_TTES] = INVALID_REG_ADDR,
+		[BQ27XXX_REG_TTECP] = INVALID_REG_ADDR,
+		[BQ27XXX_REG_NAC] = 0x22,       /* RemainingCapacity */
+		[BQ27XXX_REG_RC] = 0x22,        /* RemainingCapacity */
+		[BQ27XXX_REG_FCC] = 0x20,       /* FullChargeCapacity */
+		[BQ27XXX_REG_CYCT] = 0x2a,      /* CycleCount */
+		[BQ27XXX_REG_AE] = INVALID_REG_ADDR,
+		[BQ27XXX_REG_SOC] = 0x1c,       /* StateOfCharge */
+		[BQ27XXX_REG_DCAP] = INVALID_REG_ADDR,
+		[BQ27XXX_REG_AP] = 0x24,        /* AveragePower */
+		BQ27XXX_DM_REG_ROWS,
+	},
 	bq27010_regs[BQ27XXX_REG_MAX] = {
 		[BQ27XXX_REG_CTRL] = 0x00,
 		[BQ27XXX_REG_TEMP] = 0x06,
@@ -604,6 +625,23 @@ static enum power_supply_property bq27010_props[] = {
 #define bq2751x_props bq27510g3_props
 #define bq2752x_props bq27510g3_props
 
+static enum power_supply_property bq27200_props[] = {
+	POWER_SUPPLY_PROP_STATUS,
+	POWER_SUPPLY_PROP_PRESENT,
+	POWER_SUPPLY_PROP_VOLTAGE_NOW,
+	POWER_SUPPLY_PROP_CURRENT_NOW,
+	POWER_SUPPLY_PROP_CAPACITY,
+	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
+	POWER_SUPPLY_PROP_TEMP,
+	POWER_SUPPLY_PROP_TIME_TO_EMPTY_NOW,
+	POWER_SUPPLY_PROP_TECHNOLOGY,
+	POWER_SUPPLY_PROP_CHARGE_FULL,
+	POWER_SUPPLY_PROP_CHARGE_NOW,
+	POWER_SUPPLY_PROP_CYCLE_COUNT,
+	POWER_SUPPLY_PROP_HEALTH,
+	POWER_SUPPLY_PROP_MANUFACTURER,
+};
+
 static enum power_supply_property bq27500_props[] = {
 	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_PRESENT,
@@ -901,6 +939,7 @@ enum bq27xxx_dm_reg_id {
 };
 
 #define bq27000_dm_regs NULL
+#define bq27200_dm_regs NULL
 #define bq27010_dm_regs NULL
 #define bq2750x_dm_regs NULL
 #define bq2751x_dm_regs NULL
@@ -1014,6 +1053,7 @@ static struct {
 	size_t props_size;
 } bq27xxx_chip_data[] = {
 	[BQ27000]   = BQ27XXX_DATA(bq27000,   0         , BQ27XXX_O_ZERO | BQ27XXX_O_SOC_SI | BQ27XXX_O_HAS_CI),
+	[BQ27200]   = BQ27XXX_DATA(bq27200,   0         , 0),
 	[BQ27010]   = BQ27XXX_DATA(bq27010,   0         , BQ27XXX_O_ZERO | BQ27XXX_O_SOC_SI | BQ27XXX_O_HAS_CI),
 	[BQ2750X]   = BQ27XXX_DATA(bq2750x,   0         , BQ27XXX_O_OTDC),
 	[BQ2751X]   = BQ27XXX_DATA(bq2751x,   0         , BQ27XXX_O_OTDC),
@@ -1707,9 +1747,11 @@ static int bq27xxx_battery_read_temperature(struct bq27xxx_device_info *di,
 		return temp;
 	}
 
-	if (di->opts & BQ27XXX_O_ZERO)
-		temp = 5 * temp / 2;
-
+	/* 
+	 * BQ27220 outputs temperature in 0.1°K directly from register 0x06.
+	 * Skip the O_ZERO ×5/2 scaling — that's for old bq27000/bq27200 chips
+	 * which output raw ADC counts, not engineering units.
+	 */
 	/* Convert decidegree Kelvin to Celsius */
 	temp -= 2731;
 

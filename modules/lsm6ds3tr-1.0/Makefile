@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+ifneq ($(KERNELRELEASE),)
+
+# =========================
+# Kernel Kbuild 部分
+# =========================
+
+st_lsm6dsx-y := st_lsm6dsx_core.o st_lsm6dsx_buffer.o \
+        st_lsm6dsx_shub.o
+
+obj-m += st_lsm6dsx.o
+obj-m += st_lsm6dsx_i2c.o
+
+else
+
+# =========================
+# 外部编译部分
+# =========================
+
+KERNELDIR ?= /lib/modules/$(shell uname -r)/build
+PWD := $(shell pwd)
+
+Target_ko := st_lsm6dsx
+Target1_ko := st_lsm6dsx_i2c
+Target_dts := lsm6ds3tr-overlay
+
+all: modules $(Target_dts).dtbo
+
+modules:
+	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
+
+$(Target_dts).dtbo: $(Target_dts).dts
+	dtc -@ -I dts -O dtb -o $@ $<
+
+clean:
+	$(MAKE) -C $(KERNELDIR) M=$(PWD) clean
+	rm -f $(Target_dts).dtbo
+
+install: all
+	mkdir -p /lib/modules/$(shell uname -r)/extra
+	cp $(Target_ko).ko /lib/modules/$(shell uname -r)/extra/
+	cp $(Target1_ko).ko /lib/modules/$(shell uname -r)/extra/
+	depmod -a
+
+# 如果需要安装设备树 overlay，可以取消下面注释
+#	cp $(Target_dts).dtbo /boot/firmware/overlays/
+#	@if ! grep -q "dtoverlay=$(Target_dts)" /boot/firmware/config.txt; then \
+#		echo "dtoverlay=$(Target_dts)" >> /boot/firmware/config.txt; \
+#	fi
+
+.PHONY: all modules clean install
+
+endif

@@ -231,9 +231,9 @@ static void bq27xxx_battery_i2c_remove(struct i2c_client *client)
 }
 
 static const struct i2c_device_id bq27xxx_i2c_id_table[] = {
-	{ "bq27200", BQ27000 },
+	{ "bq27200", BQ27200 },
 	{ "bq27210", BQ27010 },
-	{ "bq27500", BQ2750X },
+	{ "bq27500", BQ27200 },
 	{ "bq27510", BQ2751X },
 	{ "bq27520", BQ2752X },
 	{ "bq27500-1", BQ27500 },
@@ -268,9 +268,9 @@ MODULE_DEVICE_TABLE(i2c, bq27xxx_i2c_id_table);
 
 #ifdef CONFIG_OF
 static const struct of_device_id bq27xxx_battery_i2c_of_match_table[] = {
-	{ .compatible = "ti,bq27200" },
+	{ .compatible = "ti,bq27200", .data = (void *)BQ27200 },
 	{ .compatible = "ti,bq27210" },
-	{ .compatible = "ti,bq27500" },
+	{ .compatible = "ti,bq27500", .data = (void *)BQ27200 },
 	{ .compatible = "ti,bq27510" },
 	{ .compatible = "ti,bq27520" },
 	{ .compatible = "ti,bq27500-1" },
