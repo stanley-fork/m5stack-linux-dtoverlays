@@ -372,6 +372,8 @@ static void py32io_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
 
 static int py32io_gpio_direction_input(struct gpio_chip *chip, unsigned offset)
 {
+    if (offset >= chip->ngpio)
+        return -EINVAL;
     return py32io_gpio_set_direction(chip, offset, GPIO_LINE_DIRECTION_IN);
 }
 
