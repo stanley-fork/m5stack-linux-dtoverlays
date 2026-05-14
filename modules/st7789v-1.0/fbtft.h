@@ -8,6 +8,7 @@
 #include <linux/spinlock.h>
 #include <linux/spi/spi.h>
 #include <linux/platform_device.h>
+#include "../compat.h"
 
 #define FBTFT_ONBOARD_BACKLIGHT 2
 
@@ -331,11 +332,11 @@ static struct spi_driver fbtft_driver_spi_driver = {                       \
 static struct platform_driver fbtft_driver_platform_driver = {             \
 	.driver = {                                                        \
 		.name   = _name,                                           \
-		.owner  = THIS_MODULE,                                     \
+		COMPAT_DRIVER_OWNER
 		.of_match_table = dt_ids,                                  \
 	},                                                                 \
 	.probe  = fbtft_driver_probe_pdev,                                 \
-	.remove = fbtft_driver_remove_pdev,				   \
+	COMPAT_PLATFORM_REMOVE = fbtft_driver_remove_pdev,		   \
 };                                                                         \
 									   \
 static int __init fbtft_driver_module_init(void)                           \

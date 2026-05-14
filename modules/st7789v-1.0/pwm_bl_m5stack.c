@@ -7,6 +7,7 @@
 #include <linux/delay.h>
 #include <linux/gpio/consumer.h>
 #include <linux/module.h>
+#include "../compat.h"
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/platform_device.h>
@@ -609,7 +610,7 @@ static struct platform_driver pwm_backlight_driver = {
         .of_match_table = of_match_ptr(pwm_backlight_of_match),
     },
     .probe = pwm_backlight_probe,
-    .remove = pwm_backlight_remove,
+    COMPAT_PLATFORM_REMOVE = pwm_backlight_remove,
     .shutdown = pwm_backlight_shutdown,
 };
 
