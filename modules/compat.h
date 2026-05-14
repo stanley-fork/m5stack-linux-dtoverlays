@@ -45,4 +45,15 @@
   #define COMPAT_DRIVER_OWNER
 #endif
 
+/*
+ * gpio_chip .set callback signature changed in 6.18+:
+ *   < 6.18: void (*set)(struct gpio_chip *, unsigned, int)
+ *   >= 6.18: int (*set)(struct gpio_chip *, unsigned, int)
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0)
+  #define COMPAT_GPIO_SET_RETURNS_INT 1
+#else
+  #define COMPAT_GPIO_SET_RETURNS_INT 0
+#endif
+
 #endif /* _M5STACK_COMPAT_H */

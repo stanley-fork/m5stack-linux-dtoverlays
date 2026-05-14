@@ -7,6 +7,7 @@
 #include <linux/acpi.h>
 #include <linux/gpio/driver.h>
 #include <linux/i2c.h>
+#include "../compat.h"
 #include <linux/interrupt.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -346,7 +347,11 @@ static int py32io_gpio_get(struct gpio_chip *chip, unsigned offset)
     return 0;
 }
 
+#if COMPAT_GPIO_SET_RETURNS_INT
+static int py32io_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
+#else
 static void py32io_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
+#endif
 {
     int ret, reg;
     struct py32io_priv *py32io = gpiochip_get_data(chip);
@@ -368,6 +373,9 @@ static void py32io_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
     if (ret) {
         dev_err(dev, "Failed to write output: %d", ret);
     }
+#if COMPAT_GPIO_SET_RETURNS_INT
+    return ret;
+#endif
 }
 
 static int py32io_gpio_direction_input(struct gpio_chip *chip, unsigned offset)
