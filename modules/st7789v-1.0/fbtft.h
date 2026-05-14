@@ -332,7 +332,7 @@ static struct spi_driver fbtft_driver_spi_driver = {                       \
 static struct platform_driver fbtft_driver_platform_driver = {             \
 	.driver = {                                                        \
 		.name   = _name,                                           \
-		COMPAT_DRIVER_OWNER
+		COMPAT_DRIVER_OWNER                                            \
 		.of_match_table = dt_ids,                                  \
 	},                                                                 \
 	.probe  = fbtft_driver_probe_pdev,                                 \
