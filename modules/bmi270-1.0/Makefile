@@ -1,4 +1,5 @@
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build
+EXTRADIR ?= $(KERNELDIR)/../extra
 PWD := $(shell pwd)
 ARCH := $(shell uname -m)
 Target_ko := bmi270_core
@@ -20,9 +21,9 @@ clean:
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) clean
 	rm -f $(Target_dts).dtbo
 install: all
-	mkdir -p /lib/modules/$(shell uname -r)/extra
+	mkdir -p $(EXTRADIR)
 	cp bmi270-init-data.fw /lib/firmware/
-	cp $(Target_ko).ko $(Target_ko1).ko /lib/modules/$(shell uname -r)/extra
+	cp $(Target_ko).ko $(Target_ko1).ko $(EXTRADIR)
 	depmod -a
 	if [ -f $(Target_dts).dtbo ]; then cp $(Target_dts).dtbo /boot/firmware/overlays/; fi
 

@@ -19,6 +19,7 @@ else
 # =========================
 
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build
+EXTRADIR ?= $(KERNELDIR)/../extra
 PWD := $(shell pwd)
 
 Target_ko := st_lsm6dsx
@@ -38,9 +39,9 @@ clean:
 	rm -f $(Target_dts).dtbo
 
 install: all
-	mkdir -p /lib/modules/$(shell uname -r)/extra
-	cp $(Target_ko).ko /lib/modules/$(shell uname -r)/extra/
-	cp $(Target1_ko).ko /lib/modules/$(shell uname -r)/extra/
+	mkdir -p $(EXTRADIR)
+	cp $(Target_ko).ko $(EXTRADIR)
+	cp $(Target1_ko).ko $(EXTRADIR)
 	depmod -a
 	if [ -f $(Target_dts).dtbo ]; then cp $(Target_dts).dtbo /boot/firmware/overlays/; fi
 

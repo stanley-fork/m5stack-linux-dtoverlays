@@ -1,4 +1,5 @@
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build
+EXTRADIR ?= $(KERNELDIR)/../extra
 PWD := $(shell pwd)
 ARCH := $(shell uname -m)
 Target_ko := tca8418_keypad_m5stack
@@ -18,8 +19,8 @@ clean:
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) clean
 	rm -f $(Target_dts).dtbo
 install: all
-	mkdir -p /lib/modules/$(shell uname -r)/extra
-	cp $(Target_ko).ko /lib/modules/$(shell uname -r)/extra
+	mkdir -p $(EXTRADIR)
+	cp $(Target_ko).ko $(EXTRADIR)
 	mkdir -p /usr/share/keymaps/
 	cp tca8418_keypad_m5stack_keymap.map /usr/share/keymaps/
 	depmod -a
