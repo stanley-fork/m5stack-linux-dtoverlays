@@ -53,8 +53,7 @@
 #include <linux/power_supply.h>
 #include <linux/slab.h>
 #include <linux/of.h>
-#include "../compat.h"
-
+#include <linux/property.h>
 #include "bq27xxx_battery.h"
 
 #define BQ27XXX_MANUFACTURER	"Texas Instruments"
@@ -2203,11 +2202,10 @@ int bq27xxx_battery_setup(struct bq27xxx_device_info *di)
 {
 	struct power_supply_desc *psy_desc;
 	struct power_supply_config psy_cfg = {
+		.fwnode = dev_fwnode(di->dev),
 		.drv_data = di,
 	};
 	int ret;
-
-	COMPAT_PSY_SET_NODE(&psy_cfg, di->dev);
 
 	INIT_DELAYED_WORK(&di->work, bq27xxx_battery_poll);
 	mutex_init(&di->lock);
@@ -2232,7 +2230,7 @@ int bq27xxx_battery_setup(struct bq27xxx_device_info *di)
 	psy_desc->get_property = bq27xxx_battery_get_property;
 	psy_desc->external_power_changed = bq27xxx_external_power_changed;
 
-	di->bat = compat_devm_power_supply_register_no_ws(di->dev, psy_desc, &psy_cfg);
+	di->bat = devm_power_supply_register(di->dev, psy_desc, &psy_cfg);
 	if (IS_ERR(di->bat))
 		return dev_err_probe(di->dev, PTR_ERR(di->bat),
 				     "failed to register battery\n");
