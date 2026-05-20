@@ -1,5 +1,5 @@
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build
-EXTRADIR ?= $(KERNELDIR)/../extra
+EXTRADIR ?= /lib/modules/$(shell uname -r)/extra
 PWD := $(shell pwd)
 ARCH := $(shell uname -m)
 Target_ko := 

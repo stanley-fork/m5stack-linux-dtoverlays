@@ -1,5 +1,5 @@
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build
-EXTRADIR ?= $(KERNELDIR)/../extra
+EXTRADIR ?= /lib/modules/$(shell uname -r)/extra
 PWD := $(shell pwd)
 ARCH := $(shell uname -m)
 Target_ko := bq27xxx_battery
@@ -23,7 +23,7 @@ clean:
 install: all
 	mkdir -p $(EXTRADIR)
 	cp $(Target_ko).ko $(Target1_ko).ko $(Target2_ko).ko $(EXTRADIR)
-	if [ "$(KERNELDIR)" == "/lib/modules/$(shell uname -r)/build" ]; then depmod -a ; fi
+	if [ "$(KERNELDIR)" = "/lib/modules/$(shell uname -r)/build" ]; then depmod -a ; fi
 	if [ -f $(Target_dts).dtbo ]; then cp $(Target_dts).dtbo /boot/firmware/overlays/; fi
 
 

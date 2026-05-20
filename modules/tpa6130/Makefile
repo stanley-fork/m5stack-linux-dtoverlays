@@ -1,5 +1,5 @@
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build
-EXTRADIR ?= $(KERNELDIR)/../extra
+EXTRADIR ?= /lib/modules/$(shell uname -r)/extra
 PWD := $(shell pwd)
 ARCH := $(shell uname -m)
 Target_ko := es8389_m5stack
@@ -21,7 +21,7 @@ clean:
 install: all
 	mkdir -p $(EXTRADIR)
 	cp $(Target_ko).ko $(EXTRADIR)
-	if [ "$(KERNELDIR)" == "/lib/modules/$(shell uname -r)/build" ]; then depmod -a ; fi
+	if [ "$(KERNELDIR)" = "/lib/modules/$(shell uname -r)/build" ]; then depmod -a ; fi
 # 	echo "dtoverlay=$(Target_dts)" | tee -a /boot/firmware/config.txt
 
 
