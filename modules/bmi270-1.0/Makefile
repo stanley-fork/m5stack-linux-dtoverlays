@@ -21,6 +21,7 @@ clean:
 	rm -f $(Target_dts).dtbo
 install: all
 	mkdir -p /lib/modules/$(shell uname -r)/extra
+	cp bmi270-init-data.fw /lib/firmware/
 	cp $(Target_ko).ko $(Target_ko1).ko /lib/modules/$(shell uname -r)/extra
 	depmod -a
 	if [ -f $(Target_dts).dtbo ]; then cp $(Target_dts).dtbo /boot/firmware/overlays/; fi
