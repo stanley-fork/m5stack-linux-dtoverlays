@@ -1,8 +1,8 @@
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build
 PWD := $(shell pwd)
 ARCH := $(shell uname -m)
-Target_ko := py32ioexp
-Target_dts := py32ioexp-overlay
+Target_ko := m5ioe1
+Target_dts := m5ioe1-overlay
 # Module name
 obj-m += $(Target_ko).o
 
