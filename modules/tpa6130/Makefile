@@ -21,7 +21,7 @@ clean:
 install: all
 	mkdir -p $(EXTRADIR)
 	cp $(Target_ko).ko $(EXTRADIR)
-	depmod -a
+	if [ "$(KERNELDIR)" == "/lib/modules/$(shell uname -r)/build" ]; then depmod -a ; fi
 # 	echo "dtoverlay=$(Target_dts)" | tee -a /boot/firmware/config.txt
 
 

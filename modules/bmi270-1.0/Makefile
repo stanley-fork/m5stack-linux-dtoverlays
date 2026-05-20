@@ -24,7 +24,7 @@ install: all
 	mkdir -p $(EXTRADIR)
 	cp bmi270-init-data.fw /lib/firmware/
 	cp $(Target_ko).ko $(Target_ko1).ko $(EXTRADIR)
-	depmod -a
+	if [ "$(KERNELDIR)" == "/lib/modules/$(shell uname -r)/build" ]; then depmod -a ; fi
 	if [ -f $(Target_dts).dtbo ]; then cp $(Target_dts).dtbo /boot/firmware/overlays/; fi
 
 

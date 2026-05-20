@@ -21,7 +21,7 @@ clean:
 install: all
 	mkdir -p $(EXTRADIR)
 	cp $(Target_ko).ko $(EXTRADIR)
-	depmod -a
+	if [ "$(KERNELDIR)" == "/lib/modules/$(shell uname -r)/build" ]; then depmod -a ; fi
 	if [ -f $(Target_dts).dtbo ]; then cp $(Target_dts).dtbo /boot/firmware/overlays/; fi
 
 
