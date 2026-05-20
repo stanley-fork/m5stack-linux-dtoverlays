@@ -57,15 +57,20 @@
             #size-cells = <0>;
             status = "okay";
 
-            py32io16: gpio@4f {
-                    compatible = "m5stack,py32io16";
+            
+            m5ioe1: gpio@4f {
+                    compatible = "m5stack,m5ioe1";
                     reg = <0x4f>;
+                    
                     gpio-controller;
                     #gpio-cells = <2>;
                     ngpios = <16>;
+                    
                     #pwm-cells = <3>;
+                    
                     status = "okay";
             };
+
             es8390: es8390@10 {
                 compatible = "everest,es8390";
                 reg = <0x10>;
@@ -109,8 +114,8 @@
 
                 // tables-sel-gpio = <&gpio 17 1>;
                 // capslock-gpio = <&gpio 16 1>;
-                tables-sel-gpio = <&py32io16 8 1>;
-                capslock-gpio = <&py32io16 7 1>;
+                tables-sel-gpio = <&m5ioe1 8 1>;
+                capslock-gpio = <&m5ioe1 7 1>;
 
                 sym-button-code = <0x43>; 
                 fn-button-code = <0x42>;  
@@ -313,7 +318,7 @@
             };
             backlight_pwm: backlight {
                 compatible = "m5stack,pwm-backlight";
-                pwms = <&py32io16 3 2000000 0>;
+                pwms = <&m5ioe1 3 2000000 0>;
                 
                 brightness-levels = <
                     0  20000  40000  60000  80000 100000 120000 140000 160000 180000
@@ -334,66 +339,37 @@
                 /* 强制初始化时开启背光 */
                 force-enable-on-init;
             };
+
             sound {
-                compatible = "simple-audio-card"; 
-                simple-audio-card,name = "ES8388-Audio";
+                compatible = "simple-audio-card";
+                simple-audio-card,name = "ES8389-Audio";
                 status = "okay";
-                
+
+                simple-audio-card,widgets =
+                    "Headphone", "Headphone Jack",
+                    "Microphone", "Mic Jack";
+
+                simple-audio-card,routing =
+                    "Headphone Jack", "HPOL",
+                    "Headphone Jack", "HPOR",
+
+                    "INPUT1", "Mic Jack",
+                    "INPUT2", "Mic Jack";
+
                 simple-audio-card,dai-link {
                     format = "i2s";
                     bitclock-master = <&dailink0_master>;
                     frame-master = <&dailink0_master>;
-                    
+
                     dailink0_master: cpu {
                         sound-dai = <&i2s_clk_producer>;
                     };
-                    
+
                     dailink0_slave: codec {
                         sound-dai = <&es8390>;
                     };
                 };
             };
-
-            // sound {
-            //     compatible = "simple-audio-card";
-            //     simple-audio-card,name = "ES8388-Audio";
-            //     status = "okay";
-
-            //     /* 耳机插孔 widget */
-            //     simple-audio-card,widgets =
-            //         "Headphone", "Headphone Jack",
-            //         "Microphone", "Mic Jack";
-
-            //     /* DAPM 路由：
-            //     *   ES8389.HPOL/HPOR  →  TPA6130A2.LEFTIN/RIGHTIN
-            //     *   TPA6130A2.HPLEFT/HPRIGHT → 耳机插孔
-            //     *   MIC Jack → ES8389.INPUT1/INPUT2
-            //     */
-            //     simple-audio-card,routing =
-            //         "LEFTIN",         "HPOL",
-            //         "RIGHTIN",        "HPOR",
-            //         "Headphone Jack", "HPLEFT",
-            //         "Headphone Jack", "HPRIGHT",
-            //         "INPUT1",         "Mic Jack",
-            //         "INPUT2",         "Mic Jack";
-
-            //     /* 把功放作为 aux-dev 挂入声卡，由 DAPM 自动使能 */
-            //     simple-audio-card,aux-devs = <&hpamp>;
-
-            //     simple-audio-card,dai-link {
-            //         format = "i2s";
-            //         bitclock-master = <&dailink0_master>;
-            //         frame-master = <&dailink0_master>;
-
-            //         dailink0_master: cpu {
-            //             sound-dai = <&i2s_clk_producer>;
-            //         };
-
-            //         dailink0_slave: codec {
-            //             sound-dai = <&es8390>;
-            //         };
-            //     };
-            // };
 
         };
         
@@ -424,7 +400,7 @@
                 txbuflen = <32768>;
                 
                 dc-gpios = <&gpio 25 0>;
-                // reset-gpios = <&py32io16 4 1>;
+                // reset-gpios = <&m5ioe1 4 1>;
 
                 ram-x-offset = <0>;
                 ram-y-offset = <35>;

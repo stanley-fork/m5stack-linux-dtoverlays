@@ -5,7 +5,7 @@ ARCH := $(shell uname -m)
 Target_ko :=
 
 # 多个 dts 目标，空格分隔，不要写 .dts 后缀
-Target_dts := cardputerzero-overlay spk-gpio24-high-overlay spi0-spidev2-gpio22-overlay camera-gpio16-high-overlay
+Target_dts := cardputerzero-overlay spk-gpio24-high-overlay spi0-spidev2-gpio22-overlay camera-gpio16-high-overlay camera-py12-high-overlay
 
 Target_dtbo := $(addsuffix .dtbo,$(Target_dts))
 

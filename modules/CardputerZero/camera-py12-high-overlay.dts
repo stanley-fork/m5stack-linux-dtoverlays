@@ -1,0 +1,20 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+    compatible = "brcm,bcm2835";
+
+    fragment@0 {
+        target = <&i2c1>;
+        __overlay__ {
+            gpio@4f {
+                cam_high_pin: cam-high {
+                    gpio-hog;
+                    gpios = <11 0>;
+                    output-high;
+                    line-name = "cam-high-pin";
+                };
+            };
+        };
+    };
+};
