@@ -7,6 +7,7 @@
 #include <linux/delay.h>
 #include <linux/gpio/consumer.h>
 #include <linux/module.h>
+#include "../compat.h"
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/platform_device.h>
