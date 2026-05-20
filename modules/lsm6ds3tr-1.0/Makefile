@@ -42,12 +42,8 @@ install: all
 	cp $(Target_ko).ko /lib/modules/$(shell uname -r)/extra/
 	cp $(Target1_ko).ko /lib/modules/$(shell uname -r)/extra/
 	depmod -a
+	if [ -f $(Target_dts).dtbo ]; then cp $(Target_dts).dtbo /boot/firmware/overlays/; fi
 
-# 如果需要安装设备树 overlay，可以取消下面注释
-#	cp $(Target_dts).dtbo /boot/firmware/overlays/
-#	@if ! grep -q "dtoverlay=$(Target_dts)" /boot/firmware/config.txt; then \
-#		echo "dtoverlay=$(Target_dts)" >> /boot/firmware/config.txt; \
-#	fi
 
 .PHONY: all modules clean install
 

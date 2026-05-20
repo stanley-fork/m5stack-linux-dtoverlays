@@ -23,8 +23,7 @@ install: all
 	cp $(Target_ko).ko /lib/modules/$(shell uname -r)/extra
 	cp $(Target1_ko).ko /lib/modules/$(shell uname -r)/extra
 	depmod -a
-# 	cp $(Target_dts).dtbo /boot/overlays
-# 	echo "dtoverlay=$(Target_dts)" | tee -a /boot/firmware/config.txt
+	if [ -f $(Target_dts).dtbo ]; then cp $(Target_dts).dtbo /boot/firmware/overlays/; fi
 
 
 .PHONY: all clean install

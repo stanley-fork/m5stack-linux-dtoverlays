@@ -12,6 +12,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/regmap.h>
+#include <linux/version.h>
 #include <linux/pwm.h>
 #include <linux/delay.h>
 #include <linux/time.h>
@@ -367,7 +368,7 @@ static int m5ioe1_gpio_get(struct gpio_chip *chip, unsigned offset)
     return 0;
 }
 
-static void m5ioe1_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
+static int m5ioe1_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
 {
     int ret, reg = 0;
     struct m5ioe1_priv *m5ioe1 = gpiochip_get_data(chip);
@@ -376,19 +377,24 @@ static void m5ioe1_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
     dev_dbg(dev, "gpio_set : offset=%u, val=%s",
         offset, value ? "1" : "0");
 
-    if (m5ioe1->gpio.ngpio == M5IOE1_N_GPIO) {
-        if (offset < 8) {
-            reg = M5IOE1_GPIO_O_L;
-        } else {
-            reg = M5IOE1_GPIO_O_H;
-            offset = offset % 8;
-        }
+    if (m5ioe1->gpio.ngpio != M5IOE1_N_GPIO)
+        return -EINVAL;
+
+    if (offset < 8) {
+        reg = M5IOE1_GPIO_O_L;
+    } else {
+        reg = M5IOE1_GPIO_O_H;
+        offset = offset % 8;
     }
 
     ret = regmap_update_bits(m5ioe1->regmap, reg, 1 << offset,
-                 value << offset);
-    if (ret)
+                 value ? (1 << offset) : 0);
+    if (ret) {
         dev_err(dev, "Failed to write output: %d", ret);
+        return ret;
+    }
+
+    return 0;
 }
 
 static int m5ioe1_gpio_direction_input(struct gpio_chip *chip, unsigned offset)
@@ -411,7 +417,11 @@ static int m5ioe1_gpio_direction_output(struct gpio_chip *chip,
         return ret;
     }
 
-    m5ioe1_gpio_set(chip, offset, value);
+    ret = m5ioe1_gpio_set(chip, offset, value);
+    if (ret) {
+        dev_err(dev, "Failed to set output value: %d", ret);
+        return ret;
+    }
 
     return 0;
 }

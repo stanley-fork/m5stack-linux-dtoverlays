@@ -23,9 +23,7 @@ install: all
 	mkdir -p /lib/modules/$(shell uname -r)/extra
 	cp $(Target_ko).ko $(Target1_ko).ko $(Target2_ko).ko /lib/modules/$(shell uname -r)/extra
 	depmod -a
-# 	cp $(Target_dts).dtbo /boot/overlays
-# 	echo "" >> /boot/firmware/config.txt
-# 	echo "dtoverlay=$(Target_dts)" >> /boot/firmware/config.txt
+	if [ -f $(Target_dts).dtbo ]; then cp $(Target_dts).dtbo /boot/firmware/overlays/; fi
 
 
 

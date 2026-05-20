@@ -23,8 +23,7 @@ install: all
 	mkdir -p /usr/share/keymaps/
 	cp tca8418_keypad_m5stack_keymap.map /usr/share/keymaps/
 	depmod -a
-	loadkeys /usr/share/keymaps/tca8418_keypad_m5stack_keymap.map
-# 	echo "dtoverlay=$(Target_dts)" | tee -a /boot/firmware/config.txt
+	if [ -f $(Target_dts).dtbo ]; then cp $(Target_dts).dtbo /boot/firmware/overlays/; fi
 
 
 .PHONY: all clean install

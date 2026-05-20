@@ -32,12 +32,29 @@ clean:
 	rm -f $(Target_dtbo)
 
 install: all install_dts
-	if [ -d '../py32ioexp-1.0' ] ; then $(MAKE) -C ../py32ioexp-1.0 install ; fi
+	if [ -d '../bmi270-1.0' ] ; then $(MAKE) -C ../bmi270-1.0 install ; fi
+	if [ -d '../bq27220-1.0' ] ; then $(MAKE) -C ../bq27220-1.0 install ; fi
+	if [ -d '../es8389-1.0' ] ; then $(MAKE) -C ../es8389-1.0 install ; fi
+# 	if [ -d '../lsm6ds3tr-1.0' ] ; then $(MAKE) -C ../lsm6ds3tr-1.0 install ; fi
+	if [ -d '../m5ioe1-1.0' ] ; then $(MAKE) -C ../m5ioe1-1.0 install ; fi
 	if [ -d '../st7789v-1.0' ] ; then $(MAKE) -C ../st7789v-1.0 install ; fi
 	if [ -d '../tca8418-1.0' ] ; then $(MAKE) -C ../tca8418-1.0 install ; fi
-	if [ -d '../es8389-1.0' ] ; then $(MAKE) -C ../es8389-1.0 install ; fi
-	if [ -d '../bq27220-1.0' ] ; then $(MAKE) -C ../bq27220-1.0 install ; fi
-	if [ -d '../lsm6ds3tr-1.0' ] ; then $(MAKE) -C ../lsm6ds3tr-1.0 install ; fi
 	echo "ok"
 
-.PHONY: all clean install install_dts
+config_setup:
+	[ -f "/tmp/rpi-config.py" ] || curl -fsSL -o "/tmp/rpi-config.py" -L "https://gist.githubusercontent.com/dianjixz/16b2fabbc4a2a573a7c10f212d87f282/raw/rpi-config.py"
+	python3 /tmp/rpi-config.py --no-backup set kernel u-boot.bin
+	python3 /tmp/rpi-config.py --no-backup set camera_auto_detect 0
+	python3 /tmp/rpi-config.py --no-backup add dtoverlay imx219
+	python3 /tmp/rpi-config.py --no-backup set dtparam=i2c_arm on
+	python3 /tmp/rpi-config.py --no-backup set dtparam=i2s on
+	python3 /tmp/rpi-config.py --no-backup set dtparam=spi on
+	python3 /tmp/rpi-config.py --no-backup section-set all enable_uart 1
+	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay cardputerzero-overlay
+	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay camera-gpio16-high-overlay
+	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay bq27220
+# 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay lsm6ds3tr-overlay
+	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay gpio-ir,gpio_pin=13,gpio_pull=up
+	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay pwm-ir-tx,gpio_pin=12,func=4
+
+.PHONY: all clean install install_dts config_setup
