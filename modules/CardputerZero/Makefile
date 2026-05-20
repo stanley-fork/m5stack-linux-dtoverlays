@@ -43,7 +43,6 @@ install: all install_dts
 
 config_setup:
 	[ -f "/tmp/rpi-config.py" ] || curl -fsSL -o "/tmp/rpi-config.py" -L "https://gist.githubusercontent.com/dianjixz/16b2fabbc4a2a573a7c10f212d87f282/raw/rpi-config.py"
-	python3 /tmp/rpi-config.py --no-backup set kernel u-boot.bin
 	python3 /tmp/rpi-config.py --no-backup set camera_auto_detect 0
 	python3 /tmp/rpi-config.py --no-backup add dtoverlay imx219
 	python3 /tmp/rpi-config.py --no-backup set dtparam=i2c_arm on
