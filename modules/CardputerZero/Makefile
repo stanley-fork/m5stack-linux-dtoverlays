@@ -56,5 +56,6 @@ config_setup:
 # 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay lsm6ds3tr-overlay
 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay gpio-ir,gpio_pin=13,gpio_pull=up
 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay pwm-ir-tx,gpio_pin=12,func=4
+	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay spk-gpio24-high-overlay
 
 .PHONY: all clean install install_dts config_setup
