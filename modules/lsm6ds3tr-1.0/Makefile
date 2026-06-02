@@ -32,11 +32,12 @@ modules:
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
 
 $(Target_dts).dtbo: $(Target_dts).dts
-	dtc -@ -I dts -O dtb -o $@ $<
+	cpp -nostdinc -undef -x assembler-with-cpp $(DTS_CC_FLAGE) $< $<.tmp
+	dtc -@ -I dts -O dtb -o $@ $<.tmp
 
 clean:
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) clean
-	rm -f $(Target_dts).dtbo
+	rm -f $(Target_dts).dtbo *.tmp
 
 install: all
 	mkdir -p $(EXTRADIR)
