@@ -23,7 +23,8 @@ $(Target_ko).ko: $(Target_ko).c
 endif
 
 %.dtbo: %.dts
-	dtc -@ -I dts -O dtb -o $@ $<
+	cpp -nostdinc -undef -x assembler-with-cpp $(DTS_CC_FLAGE) $< $<.tmp
+	dtc -@ -I dts -O dtb -o $@ $<.tmp
 
 install_dts: $(Target_dtbo)
 	cp $(Target_dtbo) /boot/firmware/overlays/
@@ -33,13 +34,15 @@ clean:
 	rm -f $(Target_dtbo)
 
 install: all install_dts
-	if [ -d '../bmi270-1.0' ] ; then $(MAKE) -C ../bmi270-1.0 install ; fi
 	if [ -d '../bq27220-1.0' ] ; then $(MAKE) -C ../bq27220-1.0 install ; fi
 	if [ -d '../es8389-1.0' ] ; then $(MAKE) -C ../es8389-1.0 install ; fi
-# 	if [ -d '../lsm6ds3tr-1.0' ] ; then $(MAKE) -C ../lsm6ds3tr-1.0 install ; fi
 	if [ -d '../m5ioe1-1.0' ] ; then $(MAKE) -C ../m5ioe1-1.0 install ; fi
 	if [ -d '../st7789v-1.0' ] ; then $(MAKE) -C ../st7789v-1.0 install ; fi
 	if [ -d '../tca8418-1.0' ] ; then $(MAKE) -C ../tca8418-1.0 install ; fi
+ifeq ($(CONFIG_CARDPUTERO_V0_5),y)
+	if [ -d '../imu-1.0' ] ; 		then cd ../imu-1.0 ; $(MAKE)  install ; fi
+# 	if [ -d '../lsm6ds3tr-1.0' ] ; then $(MAKE) -C ../lsm6ds3tr-1.0 install ; fi
+endif
 	echo "ok"
 
 config_setup:
@@ -53,8 +56,13 @@ config_setup:
 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay cardputerzero-overlay
 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay camera-gpio16-high-overlay
 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay bq27220
-# 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay lsm6ds3tr-overlay
 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay gpio-ir,gpio_pin=13,gpio_pull=up
 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay pwm-ir-tx,gpio_pin=12,func=4
+ifeq ($(CONFIG_CARDPUTERO_V0_5),y)
+	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay bmi270_bmm150_overlay
+# 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay lsm6ds3tr-overlay
+else
+	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay spk-gpio24-high-overlay
+endif
 
 .PHONY: all clean install install_dts config_setup
