@@ -8,9 +8,15 @@ fragment@0 {
     target = <&gpio>;
     __overlay__ {
         st7789v_pins: st7789v_pins {
+#if CONFIG_CARDPUTERO_V0_5
+               brcm,pins = <25 5>;
+               brcm,function = <1 0>;
+               brcm,pull = <0 0>;
+#else
                 brcm,pins = <25>;
                 brcm,function = <1>;
                 brcm,pull = <0>;
+#endif
         };
     };
 };
@@ -60,6 +66,9 @@ fragment@2 {
             txbuflen = <32768>;
             
             dc-gpios = <&gpio 25 0>;
+#if CONFIG_CARDPUTERO_V0_5
+            // te-gpios = <&gpio 5 0>;
+#endif
             // reset-gpios = <&py32io16 4 1>;
 
             // PWM背光
