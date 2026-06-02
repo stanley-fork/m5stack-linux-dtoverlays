@@ -396,6 +396,10 @@ static int m5ioe1_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
 
     return 0;
 }
+static void m5ioe1_gpio_set_void(struct gpio_chip *chip, unsigned offset, int value)
+{
+    m5ioe1_gpio_set(chip, offset, value);
+}
 
 static int m5ioe1_gpio_direction_input(struct gpio_chip *chip, unsigned offset)
 {
@@ -457,7 +461,11 @@ static int m5ioe1_gpio_setup(struct m5ioe1_priv *m5ioe1,
     gc->direction_input = m5ioe1_gpio_direction_input;
     gc->direction_output = m5ioe1_gpio_direction_output;
     gc->get = m5ioe1_gpio_get;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 18, 0)
     gc->set = m5ioe1_gpio_set;
+#else
+    gc->set = m5ioe1_gpio_set_void;
+#endif
 
     ret = devm_gpiochip_add_data(dev, gc, m5ioe1);
     if (ret) {
@@ -1285,6 +1293,15 @@ static void m5ioe1_remove(struct i2c_client *client)
     mutex_destroy(&m5ioe1->lock);
 }
 
+static void m5ioe1_shutdown(struct i2c_client *client)
+{
+    struct m5ioe1_priv *m5ioe1 = i2c_get_clientdata(client);
+
+    if (!m5ioe1)
+        return;
+    regmap_update_bits(m5ioe1->regmap, M5IOE1_GPIO_M_H, BIT(4), 0);
+}
+
 static const struct i2c_device_id m5ioe1_id_table[] = {
     { "m5ioe1", 0 },
     { }
@@ -1317,6 +1334,7 @@ static struct i2c_driver m5ioe1_driver = {
     },
     .probe = m5ioe1_probe,
     .remove = m5ioe1_remove,
+    .shutdown = m5ioe1_shutdown,
     .id_table = m5ioe1_id_table,
 };
 
