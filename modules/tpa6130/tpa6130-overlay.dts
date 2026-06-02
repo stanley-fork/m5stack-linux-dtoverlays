@@ -3,13 +3,15 @@
 
 / {
     compatible = "brcm,bcm2835";
+
+
+
     
-
-
-
     fragment@0 {
         target-path = "/";
         __overlay__ {
+#if CONFIG_CARDPUTERO_V0_5
+#else
             gpio5_regulator: gpio5-regulator {
                 compatible = "regulator-fixed";
                 regulator-name = "ext_3v3_out";
@@ -19,7 +21,7 @@
                 regulator-boot-on;
                 regulator-always-on;
             };
-
+#endif
         };
         
     };
