@@ -3,12 +3,22 @@ EXTRADIR ?= /lib/modules/$(shell uname -r)/extra
 PWD := $(shell pwd)
 ARCH := $(shell uname -m)
 
+CONFIG_CARDPUTERO_V0_5=y
+
+
 Target_ko :=
 
 # 多个 dts 目标，空格分隔，不要写 .dts 后缀
 Target_dts := cardputerzero-overlay spk-gpio24-high-overlay spi0-spidev2-gpio22-overlay camera-gpio16-high-overlay camera-py12-high-overlay
 
 Target_dtbo := $(addsuffix .dtbo,$(Target_dts))
+
+ifeq ($(CONFIG_CARDPUTERO_V0_5),y)
+DTS_CC_FLAGE := -DCONFIG_CARDPUTERO_V0_5=1
+export CONFIG_CARDPUTERO_V0_5
+export DTS_CC_FLAGE
+endif
+
 
 # Module name
 ifneq ($(strip $(Target_ko)),)
@@ -31,7 +41,7 @@ install_dts: $(Target_dtbo)
 
 clean:
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) clean
-	rm -f $(Target_dtbo)
+	rm -f $(Target_dtbo) *.tmp
 
 install: all install_dts
 	if [ -d '../bq27220-1.0' ] ; then $(MAKE) -C ../bq27220-1.0 install ; fi
@@ -60,9 +70,11 @@ config_setup:
 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay pwm-ir-tx,gpio_pin=12,func=4
 ifeq ($(CONFIG_CARDPUTERO_V0_5),y)
 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay bmi270_bmm150_overlay
+#	python3 /tmp/rpi-config.py --no-backup section-del all dtoverlay spk-gpio24-high-overlay
 # 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay lsm6ds3tr-overlay
 else
 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay spk-gpio24-high-overlay
+	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay bmi270_overlay
 endif
 
 .PHONY: all clean install install_dts config_setup

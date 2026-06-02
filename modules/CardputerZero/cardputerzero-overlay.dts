@@ -82,23 +82,30 @@
                 // spk-enable-gpios = <&gpio 24 1>;
                 status = "okay";
             };
+#if CONFIG_CARDPUTERO_V0_5
+#else
 			hpamp: hpamp@60 {
 				compatible = "ti,tpa6130a2";
 				reg = <0x60>;
                 power-supply = <&hpamp_regulator>;
 				status = "okay";
 			};
+#endif
+
             rx8130: rx8130@32 {
                 compatible = "epson,rx8130";
                 reg = <0x32>;
                 status = "okay";
             };
 
+#if CONFIG_CARDPUTERO_V0_5
+#else
             imu@68 {
                 compatible = "bosch,bmi270";
                 reg = <0x68>;
                 status = "okay";
             };
+#endif
 
             tca8418@34 {
                 compatible = "m5stack,tca8418c"; 
@@ -309,6 +316,8 @@
                 regulator-max-microvolt = <3300000>;
                 regulator-boot-on;  /* 启动时就开启 */
             };
+#if CONFIG_CARDPUTERO_V0_5
+#else
             hpamp_regulator: hpamp-regulator {
                 compatible = "regulator-fixed";
                 regulator-name = "ext_3v3_out";
@@ -316,6 +325,7 @@
                 regulator-max-microvolt = <3300000>;
                 regulator-boot-on;
             };
+#endif
             backlight_pwm: backlight {
                 compatible = "m5stack,pwm-backlight";
                 pwms = <&m5ioe1 3 2000000 0>;
@@ -340,11 +350,54 @@
                 force-enable-on-init;
             };
 
+#if CONFIG_CARDPUTERO_V0_5
+            mic_mute_switch: mic-mute-switch {
+                compatible = "simple-audio-amplifier";
+                enable-gpios = <&m5ioe1 3 0>;
+                sound-name-prefix = "Mic Switch";
+            };
+            spk_mute_switch: spk-mute-switch {
+                compatible = "simple-audio-amplifier";
+
+                enable-gpios = <&gpio 24 0>;
+
+                sound-name-prefix = "Speaker Switch";
+            };
+#endif
+
             sound {
                 compatible = "simple-audio-card";
                 simple-audio-card,name = "ES8389-Audio";
                 status = "okay";
 
+#if CONFIG_CARDPUTERO_V0_5
+                simple-audio-card,aux-devs = <
+                    &mic_mute_switch
+                    &spk_mute_switch
+                >;
+                simple-audio-card,widgets =
+                    "Headphone", "Headphone Jack",
+                    "Microphone", "Mic Jack",
+                    "Speaker", "Speaker";
+
+                simple-audio-card,pin-switches =
+                    "Mic Jack",
+                    "Speaker";
+
+                simple-audio-card,routing =
+                    "Headphone Jack", "HPOL",
+                    "Headphone Jack", "HPOR",
+
+                    "Mic Switch INL", "Mic Jack",
+                    "Mic Switch INR", "Mic Jack",
+                    "INPUT1", "Mic Switch OUTL",
+                    "INPUT2", "Mic Switch OUTR",
+
+                    "Speaker Switch INL", "HPOL",
+                    "Speaker Switch INR", "HPOR",
+                    "Speaker", "Speaker Switch OUTL",
+                    "Speaker", "Speaker Switch OUTR";
+#else
                 simple-audio-card,widgets =
                     "Headphone", "Headphone Jack",
                     "Microphone", "Mic Jack";
@@ -355,7 +408,7 @@
 
                     "INPUT1", "Mic Jack",
                     "INPUT2", "Mic Jack";
-
+#endif
                 simple-audio-card,dai-link {
                     format = "i2s";
                     bitclock-master = <&dailink0_master>;
@@ -383,10 +436,9 @@
             #address-cells = <1>;
             #size-cells = <0>;
 
-            num-cs = <3>;
+            num-cs = <2>;
             cs-gpios = <&gpio 8 1>,
-                        <&gpio 7 1>,
-                        <&gpio 22 1>;
+                        <&gpio 7 1>;
 
             st7789v@0 {
                 compatible = "sitronix,st7789v_m5stack";
@@ -414,13 +466,6 @@
                 
                 debug = <0>;
             };
-
-            // spidev@2 {
-            //     compatible = "spidev";
-            //     reg = <2>;
-            //     spi-max-frequency = <20000000>;
-            //     status = "disabled";
-            // };
         };
     };
 
@@ -430,31 +475,6 @@
             status = "disabled";
         };
     };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 };
 
 

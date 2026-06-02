@@ -7,9 +7,11 @@
     fragment@0 {
         target = <&spi0>;
         __overlay__ {
-            #address-cells = <1>;
-            #size-cells = <0>;
 
+            num-cs = <3>;
+            cs-gpios = <&gpio 8 1>,
+                        <&gpio 7 1>,
+                        <&gpio 22 1>;
             spidev@2 {
                 compatible = "spidev";
                 reg = <2>;
