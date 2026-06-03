@@ -4,10 +4,9 @@ PWD := $(shell pwd)
 ARCH := $(shell uname -m)
 Target_ko := bq27xxx_battery
 Target1_ko := bq27xxx_battery_i2c
-Target2_ko := bq27xxx_battery_hdq
 Target_dts := bq27220
 # Module name
-obj-m += $(Target_ko).o $(Target1_ko).o $(Target2_ko).o
+obj-m += $(Target_ko).o $(Target1_ko).o 
 
 all: $(Target_ko).ko $(Target_dts).dtbo
 
@@ -24,7 +23,7 @@ clean:
 
 install: all
 	mkdir -p $(EXTRADIR)
-	cp $(Target_ko).ko $(Target1_ko).ko $(Target2_ko).ko $(EXTRADIR)
+	cp $(Target_ko).ko $(Target1_ko).ko $(EXTRADIR)
 	if [ "$(KERNELDIR)" = "/lib/modules/$(shell uname -r)/build" ]; then depmod -a ; fi
 	if [ -f $(Target_dts).dtbo ]; then cp $(Target_dts).dtbo /boot/firmware/overlays/; fi
 
