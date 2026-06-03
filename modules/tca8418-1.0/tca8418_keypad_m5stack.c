@@ -116,8 +116,9 @@ struct tca8418_keypad {
 	struct input_dev *input;
 	struct led_classdev capslock_led;
 
-	struct gpio_desc *tables_sel_gpio;
-	struct gpio_desc *capslock_gpio;
+	struct gpio_desc *tables_sel_led_gpio;
+	struct gpio_desc *capslock_led_gpio;
+	struct gpio_desc *fn_led_gpio;
 	int map_base_index;
 	
 	int sym_button_code;
@@ -217,6 +218,7 @@ static void tca8418_read_keypad(struct tca8418_keypad *keypad_data)
 			if(code == keypad_data->fn_button_code)
 			{
 				keypad_data->fn_button_flag = state ? 1 : 0;
+				gpiod_set_value_cansleep(keypad_data->fn_led_gpio, state ? 1 : 0);
 			}
 
 			if(code == keypad_data->sym_button_code)
@@ -243,10 +245,10 @@ static void tca8418_read_keypad(struct tca8418_keypad *keypad_data)
 			if(keypad_data->sym_button_flag)
 			{
 				report_code = keypad_data->keycode1[code];
-				gpiod_set_value_cansleep(keypad_data->tables_sel_gpio, 1);
+				gpiod_set_value_cansleep(keypad_data->tables_sel_led_gpio, 1);
 			}
 			else{
-				gpiod_set_value_cansleep(keypad_data->tables_sel_gpio, 0);
+				gpiod_set_value_cansleep(keypad_data->tables_sel_led_gpio, 0);
 			}
 			if(keypad_data->fn_button_flag)
 			{
@@ -358,8 +360,8 @@ static void tca8418_capslock_work(struct work_struct *work)
     struct tca8418_keypad *keypad =
         container_of(work, struct tca8418_keypad, capslock_work);
 
-    if (keypad->capslock_gpio)
-        gpiod_set_value_cansleep(keypad->capslock_gpio,
+    if (keypad->capslock_led_gpio)
+        gpiod_set_value_cansleep(keypad->capslock_led_gpio,
                       keypad->capslock_state);
 }
 
@@ -430,13 +432,16 @@ static int tca8418_keypad_probe(struct i2c_client *client)
 		device_property_read_u32(dev, "fn-button-code", &keypad_data->fn_button_code);
 		device_property_read_u32(dev, "asmux-button-code", &keypad_data->asmux_button_code);
 
-		keypad_data->capslock_gpio = devm_gpiod_get_optional(dev, "capslock", GPIOD_OUT_LOW);
-		keypad_data->tables_sel_gpio = devm_gpiod_get_optional(dev, "tables-sel", GPIOD_OUT_LOW);
+		keypad_data->capslock_led_gpio = devm_gpiod_get_optional(dev, "capslock-led", GPIOD_OUT_LOW);
+		keypad_data->tables_sel_led_gpio = devm_gpiod_get_optional(dev, "tables-sel-led", GPIOD_OUT_LOW);
+		keypad_data->fn_led_gpio = devm_gpiod_get_optional(dev, "fn-led", GPIOD_OUT_LOW);
 
-		if (IS_ERR(keypad_data->capslock_gpio))
-			keypad_data->capslock_gpio = NULL;
-		if (IS_ERR(keypad_data->tables_sel_gpio))
-			keypad_data->tables_sel_gpio = NULL;
+		if (IS_ERR(keypad_data->capslock_led_gpio))
+			keypad_data->capslock_led_gpio = NULL;
+		if (IS_ERR(keypad_data->tables_sel_led_gpio))
+			keypad_data->tables_sel_led_gpio = NULL;
+		if (IS_ERR(keypad_data->fn_led_gpio))
+			keypad_data->fn_led_gpio = NULL;
 	}
 
 	/* Read key lock register, if this fails assume device not present */
@@ -487,7 +492,7 @@ static int tca8418_keypad_probe(struct i2c_client *client)
 
 	input_set_drvdata(input, keypad_data);
 
-	if(keypad_data->capslock_gpio)
+	if(keypad_data->capslock_led_gpio)
 	{
 		INIT_WORK(&keypad_data->capslock_work, tca8418_capslock_work);
 		__set_bit(EV_LED, input->evbit);

@@ -91,10 +91,14 @@
 
                 rest-gpios      = <&m5ioe1 2 1>;
 
-                tables-sel-gpio = <&m5ioe1 8 1>;
-                capslock-gpio   = <&m5ioe1 7 1>;
+
 #if CONFIG_CARDPUTERO_V0_5
-                fn-gpio         = <&m5ioe1 10 1>;
+                tables-sel-led-gpio = <&m5ioe1 10 1>;
+                capslock-led-gpio   = <&m5ioe1 7 1>;
+                fn-led-gpio         = <&m5ioe1 8 1>;
+#else
+                tables-sel-led-gpio = <&m5ioe1 8 1>;
+                capslock-led-gpio   = <&m5ioe1 7 1>;
 #endif
 
                 sym-button-code = <0x43>; 
