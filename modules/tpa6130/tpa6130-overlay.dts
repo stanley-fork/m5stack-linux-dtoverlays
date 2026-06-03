@@ -3,10 +3,6 @@
 
 / {
     compatible = "brcm,bcm2835";
-
-
-
-    
     fragment@0 {
         target-path = "/";
         __overlay__ {

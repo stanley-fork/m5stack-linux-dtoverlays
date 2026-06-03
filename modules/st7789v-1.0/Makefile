@@ -1,5 +1,6 @@
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build
 EXTRADIR ?= /lib/modules/$(shell uname -r)/extra
+ROOTFSPATH ?=
 PWD := $(shell pwd)
 ARCH := $(shell uname -m)
 DTS_CC_FLAGE ?=
@@ -29,8 +30,8 @@ install: all
 	cp $(Target_ko).ko $(EXTRADIR)
 	cp $(Target1_ko).ko $(EXTRADIR)
 	if [ -f $(Target_dts).dtbo ]; then cp $(Target_dts).dtbo /boot/firmware/overlays/; fi
-	cp cardputerzero,st7789v_lcd.bin /lib/firmware/
-	cp 99-cardputer-zero-lcd.rules /etc/udev/rules.d/
+	cp cardputerzero,st7789v_lcd.bin $(ROOTFSPATH)/lib/firmware/
+	cp 99-cardputer-zero-lcd.rules $(ROOTFSPATH)/etc/udev/rules.d/
 	if [ "$(KERNELDIR)" = "/lib/modules/$(shell uname -r)/build" ]; then depmod -a ; fi
 
 

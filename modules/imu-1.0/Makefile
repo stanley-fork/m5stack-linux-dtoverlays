@@ -1,5 +1,6 @@
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build
 EXTRADIR ?= /lib/modules/$(shell uname -r)/extra
+ROOTFSPATH ?=
 PWD ?= $(shell pwd)
 ARCH ?= $(shell uname -m)
 
@@ -32,7 +33,7 @@ clean:
 
 install: all
 	mkdir -p $(EXTRADIR)
-	cp bmi270-init-data.fw /lib/firmware/
+	cp bmi270-init-data.fw $(ROOTFSPATH)/lib/firmware/
 	cp ./*.ko $(EXTRADIR) || true
 	cp ./*.dtbo /boot/firmware/overlays/  || true
 	if [ "$(KERNELDIR)" = "/lib/modules/$(shell uname -r)/build" ]; then depmod -a ; fi

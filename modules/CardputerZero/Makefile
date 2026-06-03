@@ -1,5 +1,6 @@
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build
 EXTRADIR ?= /lib/modules/$(shell uname -r)/extra
+ROOTFSPATH ?=
 PWD := $(shell pwd)
 ARCH := $(shell uname -m)
 

@@ -1,5 +1,6 @@
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build
 EXTRADIR ?= /lib/modules/$(shell uname -r)/extra
+ROOTFSPATH ?=
 PWD := $(shell pwd)
 ARCH := $(shell uname -m)
 Target_ko := tca8418_keypad_m5stack
@@ -23,9 +24,9 @@ clean:
 install: all
 	mkdir -p $(EXTRADIR)
 	cp $(Target_ko).ko $(EXTRADIR)
-	mkdir -p /usr/share/keymaps/
-	cp tca8418_keypad_m5stack_keymap.map /usr/share/keymaps/
-	cp 99-cardputer-zero-keyboard.rules /etc/udev/rules.d/
+	mkdir -p $(ROOTFSPATH)/usr/share/keymaps/
+	cp tca8418_keypad_m5stack_keymap.map $(ROOTFSPATH)/usr/share/keymaps/
+	cp 99-cardputer-zero-keyboard.rules $(ROOTFSPATH)/etc/udev/rules.d/
 	if [ "$(KERNELDIR)" = "/lib/modules/$(shell uname -r)/build" ]; then depmod -a ; fi
 	if [ -f $(Target_dts).dtbo ]; then cp $(Target_dts).dtbo /boot/firmware/overlays/; fi
 
