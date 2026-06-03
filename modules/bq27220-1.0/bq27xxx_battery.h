@@ -5,8 +5,7 @@
 #include <linux/power_supply.h>
 
 enum bq27xxx_chip {
-	BQ27000 = 1, /* bq27000 */
-	BQ27200,     /* bq27200, bq27220 */
+	BQ27000 = 1, /* bq27000, bq27200 */
 	BQ27010, /* bq27010, bq27210 */
 	BQ2750X, /* bq27500 deprecated alias */
 	BQ2751X, /* bq27510, bq27520 deprecated alias */
@@ -37,6 +36,7 @@ enum bq27xxx_chip {
 	BQ28Z610,
 	BQ34Z100,
 	BQ78Z100,
+	BQ27220
 };
 
 struct bq27xxx_device_info;
@@ -62,7 +62,13 @@ struct bq27xxx_device_info {
 	struct bq27xxx_access_methods bus;
 	struct bq27xxx_reg_cache cache;
 	int charge_design_full;
+	int voltage_min_design;
+	int voltage_max_design;
 	int rs_mohm;
+	u16 mac_cmd;
+	int mac_ret;
+	u8 mac_len;
+	u8 mac_buf[34];
 	bool removed;
 	unsigned long last_update;
 	union power_supply_propval last_status;
