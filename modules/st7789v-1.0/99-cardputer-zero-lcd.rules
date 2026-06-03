@@ -1,0 +1,11 @@
+# DRM card → /dev/dri/cardputer-zero-internal
+SUBSYSTEM=="drm", KERNEL=="card*", \
+  ENV{ID_PATH}=="platform-3f204000.spi-cs-0", \
+  SYMLINK+="dri/cardputer-zero-internal", \
+  TAG+="seat", TAG+="master-of-seat", \
+  ENV{ID_SEAT}="seat-cardputer-zero"
+
+# drm_fbdev_generic emulated fb device → /dev/fb_lcd
+SUBSYSTEM=="graphics", KERNEL=="fb*", \
+  ATTRS{of_node/compatible}=="*st7789v*", \
+  SYMLINK+="fb_lcd"
