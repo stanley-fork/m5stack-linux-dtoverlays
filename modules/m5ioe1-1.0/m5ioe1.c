@@ -6,11 +6,13 @@
  */
 
 #include <linux/acpi.h>
+#include <linux/fs.h>
 #include <linux/gpio/driver.h>
 #include <linux/i2c.h>
 #include <linux/interrupt.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/proc_fs.h>
 #include <linux/regmap.h>
 #include <linux/version.h>
 #include <linux/pwm.h>
@@ -74,7 +76,9 @@
 #define M5IOE1_RTC_RAM_S                0x70
 #define M5IOE1_RTC_RAM_E                0x8F
 #define M5IOE1_PULSE                    0x90
-#define M5IOE1_REG_MAX                  0x90
+#define M5IOE1_READY                    0xB0
+#define M5IOE1_HW_VERSION               0xB8
+#define M5IOE1_REG_MAX                  0xFF
 
 /* ADC控制位定义 */
 #define M5IOE1_ADC_CTRL_BUSY            (1 << 7)
@@ -116,6 +120,7 @@
 #define M5IOE1_N_GPIO                   14
 #define M5IOE1_ADC_RESOLUTION           12
 #define M5IOE1_ADC_MAX_VAL              ((1 << M5IOE1_ADC_RESOLUTION) - 1)
+#define M5IOE1_HW_ID_PROC_NAME          "cardputerzero_hw_id"
 
 /* ADC超时时间 */
 #define M5IOE1_ADC_TIMEOUT_MS           100
@@ -153,6 +158,7 @@ struct m5ioe1_priv {
     struct pwm_chip *pwm_chip;
     struct pinctrl_dev *pctldev;
     struct gpio_desc *reset_gpio;
+    struct proc_dir_entry *hw_id_proc;
     struct mutex lock;
     u16 vref_mv;
 
@@ -1172,6 +1178,39 @@ static int m5ioe1_pinctrl_setup(struct m5ioe1_priv *m5ioe1)
     return 0;
 }
 
+static ssize_t m5ioe1_hw_id_proc_read(struct file *file, char __user *buf,
+                      size_t count, loff_t *ppos)
+{
+    struct m5ioe1_priv *m5ioe1 = pde_data(file_inode(file));
+    struct device *dev = &m5ioe1->i2c->dev;
+    char tmp[8];
+    int ret, hw_id;
+    size_t len;
+
+    ret = regmap_read(m5ioe1->regmap, M5IOE1_HW_VERSION, &hw_id);
+    if (ret) {
+        dev_err(dev, "Failed to read M5IOE1_HW_VERSION: %d\n", ret);
+        return ret;
+    }
+
+    len = scnprintf(tmp, sizeof(tmp), "0x%02X\n", hw_id & 0xff);
+
+    return simple_read_from_buffer(buf, count, ppos, tmp, len);
+}
+
+static const struct proc_ops m5ioe1_hw_id_proc_ops = {
+    .proc_read = m5ioe1_hw_id_proc_read,
+};
+
+static void m5ioe1_remove_hw_id_proc(struct m5ioe1_priv *m5ioe1)
+{
+    if (!m5ioe1->hw_id_proc)
+        return;
+
+    proc_remove(m5ioe1->hw_id_proc);
+    m5ioe1->hw_id_proc = NULL;
+}
+
 /* ============================================================================
  * Reset 和 Probe 实现
  * ============================================================================ */
@@ -1192,6 +1231,41 @@ static int m5ioe1_reset_setup(struct m5ioe1_priv *m5ioe1)
         m5ioe1->reset_gpio = gpio;
     }
     */
+    struct device *dev = &m5ioe1->i2c->dev;
+    int ret, io_dir;
+
+    ret = regmap_read(m5ioe1->regmap,
+                      M5IOE1_REV, &io_dir);
+    if (ret) {
+        dev_err(dev, "Failed to read M5IOE1_REV: %d\n", ret);
+        return ret;
+    }
+
+    dev_info(dev, "M5IOE1_REV=0x%02X\n", io_dir);
+
+    if (io_dir == 0x5A) {
+        io_dir = 1;
+        ret = regmap_write(m5ioe1->regmap, M5IOE1_READY,
+                   io_dir);
+        if (ret) {
+            dev_err(dev, "Failed to write M5IOE1_READY: %d\n", ret);
+            return ret;
+        }
+
+        dev_info(dev, "M5IOE1_READY set\n");
+
+        m5ioe1->hw_id_proc = proc_create_data(M5IOE1_HW_ID_PROC_NAME, 0444,
+                              NULL,
+                              &m5ioe1_hw_id_proc_ops,
+                              m5ioe1);
+        if (!m5ioe1->hw_id_proc) {
+            dev_err(dev, "Failed to create /proc/%s\n",
+                M5IOE1_HW_ID_PROC_NAME);
+            return -ENOMEM;
+        }
+
+        dev_info(dev, "/proc/%s created\n", M5IOE1_HW_ID_PROC_NAME);
+    }
 
     return 0;
 }
@@ -1282,6 +1356,7 @@ static int m5ioe1_probe(struct i2c_client *client)
     return 0;
 
 err_mutex:
+    m5ioe1_remove_hw_id_proc(m5ioe1);
     mutex_destroy(&m5ioe1->lock);
     return ret;
 }
@@ -1290,6 +1365,7 @@ static void m5ioe1_remove(struct i2c_client *client)
 {
     struct m5ioe1_priv *m5ioe1 = i2c_get_clientdata(client);
 
+    m5ioe1_remove_hw_id_proc(m5ioe1);
     mutex_destroy(&m5ioe1->lock);
 }
 
