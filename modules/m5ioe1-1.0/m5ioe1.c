@@ -78,6 +78,7 @@
 #define M5IOE1_PULSE                    0x90
 #define M5IOE1_READY                    0xB0
 #define M5IOE1_HW_VERSION               0xB8
+#define M5IOE1_OFF_TIME                 0xB2
 #define M5IOE1_REG_MAX                  0xFF
 
 /* ADC控制位定义 */

@@ -11,20 +11,21 @@ kermel_ko     :=
 kermel_dtbo   := bmi270_bmm150_overlay.dtbo bmi270_overlay.dtbo
 
 
-bmi270: $(wildcard bmi270/*.c)
-	$(kermel_module_flage) $(MAKE) -C $(KERNELDIR) M=$(PWD)/bmi270 ARCH=$(ARCH) modules
-	cp $(PWD)/bmi270/*.ko ./
+define kermel_module_template
+$(1): $$(wildcard $(1)/*.c)
+	$$(kermel_module_flage) $$(MAKE) -C $$(KERNELDIR) M=$$(PWD)/$(1) ARCH=$$(ARCH) modules
+	cp $$(PWD)/$(1)/*.ko ./
+endef
 
-magnetometer: $(wildcard magnetometer/*.c)
-	$(kermel_module_flage) $(MAKE) -C $(KERNELDIR) M=$(PWD)/magnetometer ARCH=$(ARCH) modules
-	cp $(PWD)/magnetometer/*.ko ./
+$(foreach m,$(kermel_module),$(eval $(call kermel_module_template,$(m))))
+
 
 %.dtbo: %.dts
 	cpp -nostdinc -undef -x assembler-with-cpp $(DTS_CC_FLAGE) $< $<.tmp
 	dtc -@ -I dts -O dtb -o $@ $<.tmp
 
 
-all: bmi270 magnetometer $(kermel_dtbo)
+all: $(kermel_module) $(kermel_dtbo)
 
 
 clean:

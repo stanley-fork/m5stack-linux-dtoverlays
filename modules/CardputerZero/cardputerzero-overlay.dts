@@ -50,6 +50,8 @@
                 #sound-dai-cells = <0>;
                 clock-names = "mclk";
                 clocks = <&es8390_mclk>;
+                snd_def-ADCL_PGA_Volume = <8>;
+                snd_def-ADCR_PGA_Volume = <8>;
                 status = "okay";
             };
 #if CONFIG_CARDPUTERO_V0_5
@@ -279,6 +281,15 @@
     fragment@3 {
         target-path = "/";
         __overlay__ {
+
+            powerfail {
+                compatible = "cardputerzero,powerfail-suo";
+                debounce-ms = <500>;
+                interrupt-parent = <&gpio>;
+                interrupts = <6 2>; /* 中断io 下沿触发  */
+                irq-gpios = <&gpio 6 0x00>; /* 中断io 下沿触发 */
+            };
+
             es8390_mclk: es8390_mclk {
                 compatible = "fixed-clock";
                 #clock-cells = <0>;
@@ -416,27 +427,32 @@
             cs-gpios = <&gpio 8 1>,
                         <&gpio 7 1>;
 #if CONFIG_CARDPUTERO_V0_5
-            display:st7789v@0 {
-                compatible = "cardputerzero,st7789v_lcd", "panel-mipi-dbi-spi";
+            display: st7789v@0 {
+                compatible = "cardputerzero,st7789v_lcd", "panel-mipi-dbi-m5stack";
                 reg = <0>;
-                spi-max-frequency = <40000000>;      // 40 MHz SPI
-                dc-gpios = <&gpio 25 0>;             // DC 引脚 = GPIO25
-                backlight = <&backlight_pwm>;
-                write-only;                           // 只写（无 MISO）
-                format = "r5g6b5";                   // RGB565
+                spi-max-frequency = <60000000>;
 
-                width-mm = <26>;   
-                height-mm = <14>;  // 物理尺寸
+                dc-gpios    = <&gpio 25 0>;
+                // te-gpios    = <&gpio 5  0>;
+                /* reset-gpios = <&gpio 27 GPIO_ACTIVE_LOW>;  按实际接线决定是否需要 */
+
+                backlight = <&backlight_pwm>;
+                write-only;
+                format = "r5g6b5";
+
+                width-mm  = <26>;
+                height-mm = <14>;
+
                 panel-timing {
-                    clock-frequency = <6000000>;
-                    hactive = <320>;   
+                    clock-frequency = <1968000>;
+                    hactive = <320>;
                     vactive = <170>;
-                    hfront-porch = <0>; 
-                    hsync-len = <0>; 
-                    hback-porch = <0>;
-                    vfront-porch = <0>; 
-                    vsync-len = <0>; 
-                    vback-porch = <35>;
+                    hfront-porch = <0>;
+                    hsync-len    = <0>;
+                    hback-porch  = <0>;
+                    vfront-porch = <0>;
+                    vsync-len    = <0>;
+                    vback-porch  = <35>;
                 };
             };
 #else

@@ -16,6 +16,7 @@
 #include <linux/kernel.h>
 #include <linux/delay.h>
 #include <linux/i2c.h>
+#include <linux/of.h>
 #include <linux/regmap.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -39,39 +40,7 @@ struct	es8389_private {
 	enum snd_soc_bias_level bias_level;
 
 };
-// struct tpa6130_data {
-//     struct i2c_client *client;
-//     struct regmap *regmap;
-// };
-// static int es8389_get_remote_device(struct i2c_client *es8389, void **tpa6130)
-// {
-//     struct device_node *np = es8389->dev.of_node;
-//     struct i2c_client *remote_client;
-    
-//     /* 从设备树获取 phandle */
-//     es8389->remote_np = of_parse_phandle(np, "Wired-remote-control", 0);
-//     if(es8389->remote_np == NULL)
-// 		return 0;
 
-//     /* 通过设备树节点查找 I2C 设备 */
-//     remote_client = of_find_i2c_device_by_node(es8389->remote_np);
-//     if (!remote_client) {
-//         dev_err(&es8389->dev, 
-//                 "Failed to find remote I2C device\n");
-//         of_node_put(es8389->remote_np);
-//         return -EPROBE_DEFER;  /* 延迟探测，等待 TPA6130 加载 */
-//     }
-
-//     es8389->remote_dev = &remote_client->dev;
-    
-//     /* 获取 TPA6130 的 regmap */
-//     struct tpa6130_data *tpa6130;
-// 	tpa6130 = dev_get_drvdata(es8389->remote_dev);
-// 	es8389->remote_regmap = tpa6130->regmap;
-
-//     dev_info(&es8389->client->dev, "Got remote device successfully\n");
-//     return 0;
-// }
 
 
 static bool es8389_volatile_register(struct device *dev,
@@ -273,6 +242,150 @@ static const struct snd_kcontrol_new es8389_snd_controls[] = {
 	SOC_DOUBLE("DAC OUTPUT Invert Switch", ES8389_DAC_INV, 5, 6, 1, 0),
 	SOC_SINGLE_TLV("ADC2DAC Mixer Volume", ES8389_MIX_VOL, 0, 0x7F, 0, mix_vol_tlv),
 };
+
+static bool es8389_snd_def_name_matches(const char *control_name,
+					const char *prop_name)
+{
+	const char *def_name;
+
+	if (!strstarts(prop_name, "snd_def-"))
+		return false;
+
+	def_name = prop_name + strlen("snd_def-");
+	while (*control_name && *def_name) {
+		char c = *control_name++;
+		char p = *def_name++;
+
+		if (c == ' ')
+			c = '_';
+
+		if (c != p)
+			return false;
+	}
+
+	return !*control_name && !*def_name;
+}
+
+static int es8389_set_volsw_default(struct snd_soc_component *component,
+				    const struct snd_kcontrol_new *control,
+				    unsigned int value)
+{
+	struct es8389_private *es8389 = snd_soc_component_get_drvdata(component);
+	const struct soc_mixer_control *mc =
+		(const struct soc_mixer_control *)control->private_value;
+	unsigned int mask;
+	unsigned int regval;
+	int ret;
+
+	if (value > mc->max) {
+		dev_warn(component->dev,
+			 "snd_def-%s value %u exceeds max %d\n",
+			 control->name, value, mc->max);
+		return -EINVAL;
+	}
+
+	mask = (1U << fls(mc->max)) - 1;
+	regval = mc->invert ? mc->max - value : value;
+	ret = regmap_update_bits(es8389->regmap, mc->reg,
+				 mask << mc->shift,
+				 regval << mc->shift);
+	if (ret)
+		return ret;
+
+	if (snd_soc_volsw_is_stereo(mc))
+		ret = regmap_update_bits(es8389->regmap, mc->rreg,
+					 mask << mc->rshift,
+					 regval << mc->rshift);
+
+	return ret;
+}
+
+static int es8389_set_enum_default(struct snd_soc_component *component,
+				   const struct snd_kcontrol_new *control,
+				   unsigned int value)
+{
+	struct es8389_private *es8389 = snd_soc_component_get_drvdata(component);
+	const struct soc_enum *e = (const struct soc_enum *)control->private_value;
+	unsigned int regval;
+	int ret;
+
+	if (value >= e->items) {
+		dev_warn(component->dev,
+			 "snd_def-%s value %u exceeds enum items %u\n",
+			 control->name, value, e->items);
+		return -EINVAL;
+	}
+
+	regval = snd_soc_enum_item_to_val(e, value);
+	ret = regmap_update_bits(es8389->regmap, e->reg,
+				 e->mask << e->shift_l,
+				 regval << e->shift_l);
+	if (ret)
+		return ret;
+
+	if (e->shift_l != e->shift_r)
+		ret = regmap_update_bits(es8389->regmap, e->reg,
+					 e->mask << e->shift_r,
+					 regval << e->shift_r);
+
+	return ret;
+}
+
+static void es8389_apply_snd_control_defaults(struct snd_soc_component *component)
+{
+	struct device_node *np = component->dev->of_node;
+	struct property *prop;
+
+	if (!np)
+		return;
+
+	for_each_property_of_node(np, prop) {
+		unsigned int i;
+		u32 value;
+		bool found = false;
+		int ret;
+
+		if (!strstarts(prop->name, "snd_def-"))
+			continue;
+
+		ret = of_property_read_u32(np, prop->name, &value);
+		if (ret) {
+			dev_warn(component->dev, "%s is not a u32 value\n",
+				 prop->name);
+			continue;
+		}
+
+		for (i = 0; i < ARRAY_SIZE(es8389_snd_controls); i++) {
+			const struct snd_kcontrol_new *control =
+				&es8389_snd_controls[i];
+
+			if (!es8389_snd_def_name_matches(control->name,
+							 prop->name))
+				continue;
+
+			found = true;
+			if (control->info == snd_soc_info_volsw)
+				ret = es8389_set_volsw_default(component,
+							       control, value);
+			else if (control->info == snd_soc_info_enum_double)
+				ret = es8389_set_enum_default(component,
+							      control, value);
+			else
+				ret = -EINVAL;
+
+			if (ret)
+				dev_warn(component->dev,
+					 "failed to apply %s=%u: %d\n",
+					 prop->name, value, ret);
+			break;
+		}
+
+		if (!found)
+			dev_warn(component->dev,
+				 "%s does not match any sound control\n",
+				 prop->name);
+	}
+}
 
 static const struct snd_soc_dapm_widget es8389_dapm_widgets[] = {
 	/*Input Side*/
@@ -852,10 +965,12 @@ static int es8389_resume(struct snd_soc_component *component)
 	regmap_read(es8389->regmap, ES8389_RESET, &regv);
 	regcache_cache_bypass(es8389->regmap, false);
 
-	if (regv == 0xff)
+	if (regv == 0xff) {
 		es8389_init(component);
-	else
+		es8389_apply_snd_control_defaults(component);
+	} else {
 		es8389_set_bias_level(component, SND_SOC_BIAS_ON);
+	}
 
 	regcache_sync(es8389->regmap);
 
@@ -888,6 +1003,7 @@ static int es8389_probe(struct snd_soc_component *component)
 	// }
 
 	es8389_init(component);
+	es8389_apply_snd_control_defaults(component);
 	es8389_set_bias_level(component, SND_SOC_BIAS_STANDBY);
 
 	return 0;

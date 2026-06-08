@@ -7,7 +7,7 @@ ARCH := $(shell uname -m)
 CONFIG_CARDPUTERO_V0_5=y
 
 
-Target_ko :=
+Target_ko := powerfail_suo
 
 # 多个 dts 目标，空格分隔，不要写 .dts 后缀
 Target_dts := cardputerzero-overlay spk-gpio24-high-overlay spi0-spidev2-gpio22-overlay camera-gpio16-high-overlay camera-py12-high-overlay
@@ -25,8 +25,11 @@ endif
 ifneq ($(strip $(Target_ko)),)
 obj-m += $(Target_ko).o
 endif
-
+ifneq ($(strip $(Target_ko)),)
+all: $(Target_dtbo) $(Target_ko).ko
+else
 all: $(Target_dtbo)
+endif
 
 ifneq ($(strip $(Target_ko)),)
 $(Target_ko).ko: $(Target_ko).c
@@ -45,6 +48,8 @@ clean:
 	rm -f $(Target_dtbo) *.tmp
 
 install: all install_dts
+	mkdir -p $(EXTRADIR)
+	cp ./*.ko $(EXTRADIR) || true
 	if [ -d '../bq27220-1.0' ] ; then $(MAKE) -C ../bq27220-1.0 install ; fi
 	if [ -d '../es8389-1.0' ] ; then $(MAKE) -C ../es8389-1.0 install ; fi
 	if [ -d '../m5ioe1-1.0' ] ; then $(MAKE) -C ../m5ioe1-1.0 install ; fi
@@ -68,7 +73,7 @@ config_setup:
 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay camera-gpio16-high-overlay
 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay bq27220
 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay gpio-ir,gpio_pin=13,gpio_pull=up
-	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay pwm-ir-tx,gpio_pin=12,func=4
+	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay gpio-ir-tx,gpio_pin=12
 ifeq ($(CONFIG_CARDPUTERO_V0_5),y)
 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay bmi270_bmm150_overlay
 #	python3 /tmp/rpi-config.py --no-backup section-del all dtoverlay spk-gpio24-high-overlay

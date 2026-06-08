@@ -1,38 +1,43 @@
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build
 EXTRADIR ?= /lib/modules/$(shell uname -r)/extra
 ROOTFSPATH ?=
-PWD := $(shell pwd)
-ARCH := $(shell uname -m)
-DTS_CC_FLAGE ?=
+PWD ?= $(shell pwd)
+ARCH ?= $(shell uname -m)
 
-Target_ko := st7789v_m5stack
-Target1_ko := pwm_bl_m5stack
-Target_dts := st7789v_m5stack
 
-# Module name
-obj-m += $(Target_ko).o $(Target1_ko).o
+kermel_module := 
+kermel_module_flage  := 
+kermel_ko     := st7789v_m5stack.ko pwm_bl_m5stack.ko panel-mipi-dbi-m.ko
+kermel_dtbo   := st7789v_m5stack.dtbo
 
-all: $(Target_ko).ko $(Target_dts).dtbo
+all:  $(kermel_dtbo) kermel_ko_t $(kermel_module)
 
-$(Target_ko).ko: $(Target_ko).c $(Target1_ko).c
-	$(MAKE) -C $(KERNELDIR) M=$(PWD) ARCH=$(ARCH) modules
+obj-m += $(patsubst %.ko,%.o,$(kermel_ko))
 
-$(Target_dts).dtbo: $(Target_dts).dts
+%.dtbo: %.dts
 	cpp -nostdinc -undef -x assembler-with-cpp $(DTS_CC_FLAGE) $< $<.tmp
 	dtc -@ -I dts -O dtb -o $@ $<.tmp
 
+kermel_ko_t: $(patsubst %.ko,%.c,$(kermel_ko))
+	$(MAKE) -C $(KERNELDIR) M=$(PWD) ARCH=$(ARCH) modules
+
+
+
+
+
+
+
 clean:
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) clean
-	rm -f $(Target_dts).dtbo *.tmp
+	rm -f $(kermel_dtbo) *.tmp
 
 install: all
 	mkdir -p $(EXTRADIR)
-	cp $(Target_ko).ko $(EXTRADIR)
-	cp $(Target1_ko).ko $(EXTRADIR)
-	if [ -f $(Target_dts).dtbo ]; then cp $(Target_dts).dtbo /boot/firmware/overlays/; fi
 	cp cardputerzero,st7789v_lcd.bin $(ROOTFSPATH)/lib/firmware/
 	cp 99-cardputer-zero-lcd.rules $(ROOTFSPATH)/etc/udev/rules.d/
+	cp ./*.ko $(EXTRADIR) || true
+	cp ./*.dtbo /boot/firmware/overlays/  || true
 	if [ "$(KERNELDIR)" = "/lib/modules/$(shell uname -r)/build" ]; then depmod -a ; fi
 
 
-.PHONY: all clean install
+.PHONY: all clean install bmi270 magnetometer
