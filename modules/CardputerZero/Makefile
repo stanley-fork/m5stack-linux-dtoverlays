@@ -4,7 +4,9 @@ ROOTFSPATH ?=
 PWD := $(shell pwd)
 ARCH := $(shell uname -m)
 
+ifndef CONFIG_CARDPUTERO_V0_3
 CONFIG_CARDPUTERO_V0_5=y
+endif
 
 
 Target_ko := powerfail_suo
