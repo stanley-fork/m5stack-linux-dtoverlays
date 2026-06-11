@@ -483,8 +483,8 @@ static u8
 		[BQ27XXX_REG_TTE]       = 0x16,
 		[BQ27XXX_REG_TTF]       = 0x18,
 		[BQ27XXX_REG_TTES]      = 0x1C,   // StandbyTimeToEmpty
-		[BQ27XXX_REG_TTECP]     = 0x20,   // MaxLoadTimeToEmpty (近似)
-		[BQ27XXX_REG_NAC]       = INVALID_REG_ADDR,  // ← 无此寄存器
+		[BQ27XXX_REG_TTECP]     = 0x20,   // MaxLoadTimeToEmpty (approximate)
+		[BQ27XXX_REG_NAC]       = INVALID_REG_ADDR,  // No such register
 		[BQ27XXX_REG_RC]        = 0x10,   // RemainingCapacity
 		[BQ27XXX_REG_FCC]       = 0x12,
 		[BQ27XXX_REG_CYCT]      = 0x2A,

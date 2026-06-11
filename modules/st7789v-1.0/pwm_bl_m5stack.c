@@ -16,7 +16,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 
-/* 自定义平台数据结构，添加 force_enable_on_init 字段 */
+/* Custom platform data structure with the force_enable_on_init field */
 struct platform_pwm_backlight_data {
     unsigned int max_brightness;
     unsigned int dft_brightness;
@@ -25,7 +25,7 @@ struct platform_pwm_backlight_data {
     unsigned int post_pwm_on_delay;
     unsigned int pwm_off_delay;
     unsigned int *levels;
-    bool force_enable_on_init;  /* 新增：强制初始化时开启背光 */
+    bool force_enable_on_init;  /* Added: force the backlight on during initialization */
     
     int (*init)(struct device *dev);
     int (*notify)(struct device *dev, int brightness);
@@ -44,7 +44,7 @@ struct pwm_bl_data {
     unsigned int scale;
     unsigned int post_pwm_on_delay;
     unsigned int pwm_off_delay;
-    bool force_enable_on_init;  /* 新增：强制初始化时开启背光 */
+    bool force_enable_on_init;  /* Added: force the backlight on during initialization */
     int (*notify)(struct device *,
           int brightness);
     void (*notify_after)(struct device *,
@@ -213,7 +213,7 @@ static int pwm_backlight_parse_dt(struct device *dev,
                  &data->post_pwm_on_delay);
     of_property_read_u32(node, "pwm-off-delay-ms", &data->pwm_off_delay);
 
-    /* 新增：读取强制开启背光的属性 */
+    /* Added: read the property that forces the backlight on */
     data->force_enable_on_init = 
         of_property_read_bool(node, "force-enable-on-init");
     
@@ -296,7 +296,7 @@ static int pwm_backlight_parse_dt(struct device *dev,
 
 static const struct of_device_id pwm_backlight_of_match[] = {
     { .compatible = "pwm-backlight" },
-    { .compatible = "m5stack,pwm-backlight" },  /* 添加你的兼容字符串 */
+    { .compatible = "m5stack,pwm-backlight" },  /* Add the board-specific compatible string */
     { }
 };
 
@@ -342,7 +342,7 @@ static int pwm_backlight_initial_power_state(const struct pwm_bl_data *pb)
     struct device_node *node = pb->dev->of_node;
     bool active = true;
 
-    /* 新增：如果设置了强制开启标志，直接返回开启状态 */
+    /* Added: return the enabled state directly when the force-enable flag is set */
     if (pb->force_enable_on_init) {
         dev_info(pb->dev, "Force enable backlight on initialization\n");
         return BACKLIGHT_POWER_ON;
@@ -403,7 +403,7 @@ static int pwm_backlight_probe(struct platform_device *pdev)
     pb->enabled = false;
     pb->post_pwm_on_delay = data->post_pwm_on_delay;
     pb->pwm_off_delay = data->pwm_off_delay;
-    pb->force_enable_on_init = data->force_enable_on_init;  /* 新增 */
+    pb->force_enable_on_init = data->force_enable_on_init;  /* Added */
 
     pb->enable_gpio = devm_gpiod_get_optional(&pdev->dev, "enable",
                           GPIOD_ASIS);
@@ -505,7 +505,7 @@ static int pwm_backlight_probe(struct platform_device *pdev)
     bl->props.brightness = data->dft_brightness;
     bl->props.power = pwm_backlight_initial_power_state(pb);
 
-    /* 新增：如果强制开启，确保亮度不为0 */
+    /* Added: ensure brightness is non-zero when force-enable is set */
     if (pb->force_enable_on_init) {
         if (bl->props.brightness == 0) {
             bl->props.brightness = data->dft_brightness > 0 ? 

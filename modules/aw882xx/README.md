@@ -5,7 +5,7 @@ Please use the boot script to load the kernel file. Please refer to the followin
 
 # systemd Starts the system and runs rc.local  
 
-1、Modify the content of `/lib/systemd/system/rc-local.service` as follows, mainly by adding the Install field.
+1. Modify the content of `/lib/systemd/system/rc-local.service` as follows, mainly by adding the Install field.
 ``` bash
 #  SPDX-License-Identifier: LGPL-2.1+
 #
@@ -73,11 +73,11 @@ The command output is as follows
    CGroup: /system.slice/rc-local.service
            └─10811 /usr/bin/python /usr/bin/sslocal -c /home/xugaoxiang/Tools/ss/ss.json
 
-11月 01 13:17:08 ubuntu systemd[1]: Starting /etc/rc.local Compatibility...
-11月 01 13:17:08 ubuntu systemd[1]: Started /etc/rc.local Compatibility.
-11月 01 13:17:08 ubuntu rc.local[10810]: INFO: loading config from /home/xugaoxiang/Tools/ss/ss.json
-11月 01 13:17:08 ubuntu rc.local[10810]: 2018-11-01 13:17:08 INFO     loading libcrypto from libcrypto.so.1.1
-11月 01 13:17:08 ubuntu rc.local[10810]: 2018-11-01 13:17:08 INFO     starting local at 127.0.0.1:1080
+Nov 01 13:17:08 ubuntu systemd[1]: Starting /etc/rc.local Compatibility...
+Nov 01 13:17:08 ubuntu systemd[1]: Started /etc/rc.local Compatibility.
+Nov 01 13:17:08 ubuntu rc.local[10810]: INFO: loading config from /home/xugaoxiang/Tools/ss/ss.json
+Nov 01 13:17:08 ubuntu rc.local[10810]: 2018-11-01 13:17:08 INFO     loading libcrypto from libcrypto.so.1.1
+Nov 01 13:17:08 ubuntu rc.local[10810]: 2018-11-01 13:17:08 INFO     starting local at 127.0.0.1:1080
 ```
 
 You can see that the script in rc.local has been executed correctly.

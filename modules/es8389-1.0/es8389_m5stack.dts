@@ -111,8 +111,8 @@
 // //         __overlay__ {
 // //             gpio5_output: gpio5_output {
 // //                 brcm,pins = <5>;
-// //                 brcm,function = <1>; /* 输出模式 */
-// //                 brcm,pull = <0>;     /* 无上下拉 */
+// //                 brcm,function = <1>; /* Output mode */
+// //                 brcm,pull = <0>;     /* No pull-up or pull-down */
 // //             };
 // //         };
 // //     };
@@ -178,11 +178,11 @@
 
 // //         backlight_pwm: backlight {
 // //             compatible = "pwm-backlight";
-// //             // 使用py32io的PWM1通道（hwpwm=0）
-// //             // #pwm-cells = <3>: <通道号 周期(ns) 极性>
-// //             pwms = <&py32io16 3 2000000 0>;  // PWM4, 500Hz(2ms), 正极性
+// //             // Use the py32io PWM1 channel (hwpwm=0)
+// //             // #pwm-cells = <3>: <channel period(ns) polarity>
+// //             pwms = <&py32io16 3 2000000 0>;  // PWM4, 500 Hz (2 ms), positive polarity
             
-// //             // 亮度级别映射
+// //             // Brightness level mapping
 // //             brightness-levels = <
 // //                 0   4   8   12  16  20  24  28
 // //                 32  36  40  44  48  52  56  60
@@ -194,9 +194,9 @@
 // //                 224 228 232 236 240 244 248 252
 // //                 255
 // //             >;
-// //             default-brightness-level = <32>;  // 默认50%亮度
+// //             default-brightness-level = <32>;  // Default 50% brightness
             
-// //             // power-supply = <&vcc_3v3>;  // 根据实际修改
+// //             // power-supply = <&vcc_3v3>;  // Adjust for the actual hardware
 // //             status = "okay";
 // //         };
 // //     };
@@ -234,14 +234,14 @@
 
 // //         py32io16: gpio@6f {
 // //                 compatible = "m5stack,py32io16";
-// //                 reg = <0x6f>;  // I2C地址，根据实际硬件修改
+// //                 reg = <0x6f>;  // I2C address; adjust for the actual hardware
                 
-// //                 // GPIO控制器配置
+// //                 // GPIO controller configuration
 // //                 gpio-controller;
 // //                 #gpio-cells = <2>;
 // //                 ngpios = <16>;
                 
-// //                 // PWM控制器配置
+// //                 // PWM controller configuration
 // //                 #pwm-cells = <3>;
                 
 // //                 status = "okay";
@@ -271,17 +271,17 @@
 // //             pinctrl-names = "default";
 // //             pinctrl-0 = <&tca8418_pins>;
 // //             interrupt-parent = <&gpio>;
-// //             interrupts = <27 2>; /* 中断io 下沿触发  */
-// //             irq-gpios = <&gpio 27 0x00>; /* 中断io 下沿触发 */
+// //             interrupts = <27 2>; /* Interrupt IO, falling-edge trigger  */
+// //             irq-gpios = <&gpio 27 0x00>; /* Interrupt IO, falling-edge trigger */
                 
 // //             keypad,num-rows = <5>;
 // //             keypad,num-columns = <10>;
 
 // //             tables-sel-gpio = <&gpio 17 1>;
 // //             capslock-gpio = <&gpio 16 1>;
-// //             switch-button-code = <73>; /* 切换按键 keycode */
+// //             switch-button-code = <73>; /* Switch button keycode */
 // //             // interrupt-controller;
-// //             /* row | column | key-code  例如: 04,08,0010 q 键 */
+// //             /* row | column | key-code, for example: 04,08,0010 for the Q key */
 // //             linux,keymap = <
 // //                 0x04000001
 // //                 0x04040010
@@ -400,7 +400,7 @@
 // //             dc-gpios = <&gpio 25 0>;
 // //             // reset-gpios = <&py32io16 4 1>;
 
-// //             // PWM背光
+// //             // PWM backlight
 // //             backlight = <&backlight_pwm>;
 
 // //             ram-x-offset = <0>;

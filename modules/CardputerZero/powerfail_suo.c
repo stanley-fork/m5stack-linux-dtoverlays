@@ -2,7 +2,7 @@
 /*
  * Power fail GPIO driver
  *
- * 检测到掉电 GPIO 低电平有效后，执行：
+ * When the power-fail GPIO is active-low, execute:
  *
  *   S: handle_sysrq('s')
  *   U: handle_sysrq('u')
@@ -37,15 +37,15 @@ static void powerfail_suo_work(struct work_struct *work)
     int val;
 
     /*
-     * 软件消抖。
+     * Software debounce.
      */
     if (data->debounce_ms)
         msleep(data->debounce_ms);
 
     /*
-     * irq-gpios 使用原始电平判断：
-     *     实际低电平 -> 掉电信号有效
-     *     实际高电平 -> 掉电信号无效
+     * Use the raw level from irq-gpios:
+     *     Actual low level -> power-fail signal is active
+     *     Actual high level -> power-fail signal is inactive
      */
     val = gpiod_get_raw_value_cansleep(data->gpiod);
     if (val < 0) {
@@ -72,7 +72,7 @@ static void powerfail_suo_work(struct work_struct *work)
     // /*
     //  * S: sync
     //  *
-    //  * 对应 Magic SysRq:
+    //  * Corresponding Magic SysRq:
     //  *   echo s > /proc/sysrq-trigger
     // */
     // dev_emerg(data->dev, "SysRq S: emergency sync filesystems\n");
@@ -82,7 +82,7 @@ static void powerfail_suo_work(struct work_struct *work)
     /*
      * U: remount readonly
      *
-     * 对应 Magic SysRq:
+     * Corresponding Magic SysRq:
      *   echo u > /proc/sysrq-trigger
      */
     dev_emerg(data->dev, "SysRq U: emergency remount filesystems readonly\n");
@@ -91,18 +91,18 @@ static void powerfail_suo_work(struct work_struct *work)
     // /*
     //  * O: power off
     //  *
-    //  * 对应 Magic SysRq:
+    //  * Corresponding Magic SysRq:
     //  *   echo o > /proc/sysrq-trigger
     //  *
-    //  * 注意：
-    //  * kernel_power_off() 是否真正能断电，取决于你的板级 PMIC、
-    //  * 电源管理驱动、pm_power_off 回调是否配置正确。
+    //  * Note:
+    //  * Whether kernel_power_off() actually cuts power depends on the board PMIC,
+    //  * the power-management driver, and whether the pm_power_off callback is configured correctly.
     //  */
     // dev_emerg(data->dev, "SysRq O: power off now\n");
     // kernel_power_off();
 
     /*
-     * 正常情况下不会执行到这里。
+     * Normally execution should not reach here.
      */
     // dev_emerg(data->dev, "kernel_power_off returned unexpectedly\n");
 }
@@ -112,20 +112,20 @@ static irqreturn_t powerfail_suo_irq_handler(int irq, void *dev_id)
     struct powerfail_suo_data *data = dev_id;
 
     /*
-     * 防止重复触发。
+     * Prevent repeated triggers.
      */
     if (atomic_xchg(&data->triggered, 1))
         return IRQ_HANDLED;
 
     /*
-     * 禁止后续中断。
-     * 掉电处理只允许执行一次。
+     * Disable subsequent interrupts.
+     * Power-fail handling is allowed to run only once.
      */
     disable_irq_nosync(data->irq);
 
     /*
-     * 不在硬中断里面执行 sync/remount/poweroff。
-     * 放到 workqueue 里执行。
+     * Do not run sync/remount/poweroff from the hard IRQ context.
+     * Run it from a workqueue instead.
      */
     schedule_work(&data->work);
 
@@ -149,7 +149,7 @@ static int powerfail_suo_probe(struct platform_device *pdev)
     of_property_read_u32(dev->of_node, "debounce-ms", &data->debounce_ms);
 
     /*
-     * 对应设备树属性：
+     * Corresponding Device Tree property:
      *
      *   irq-gpios = <&gpio 23 0x00>;
      */
@@ -168,10 +168,10 @@ static int powerfail_suo_probe(struct platform_device *pdev)
     }
 
     /*
-     * 中断触发方式由设备树 interrupts 属性决定：
+     * The interrupt trigger type is determined by the Device Tree interrupts property:
      *
      *   interrupt-parent = <&gpio>;
-     *   interrupts = <23 2>;  // 下降沿
+     *   interrupts = <23 2>;  // falling edge
      */
     ret = devm_request_irq(dev,
                            data->irq,

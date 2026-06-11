@@ -3,7 +3,7 @@
 ifneq ($(KERNELRELEASE),)
 
 # =========================
-# Kernel Kbuild 部分
+# Kernel Kbuild section
 # =========================
 
 st_lsm6dsx-y := st_lsm6dsx_core.o st_lsm6dsx_buffer.o \
@@ -15,7 +15,7 @@ obj-m += st_lsm6dsx_i2c.o
 else
 
 # =========================
-# 外部编译部分
+# External build section
 # =========================
 
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build

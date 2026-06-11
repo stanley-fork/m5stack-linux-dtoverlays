@@ -11,7 +11,7 @@ endif
 
 Target_ko := powerfail_suo
 
-# 多个 dts 目标，空格分隔，不要写 .dts 后缀
+# Multiple dts targets, separated by spaces; omit the .dts suffix
 Target_dts := cardputerzero-overlay spk-gpio24-high-overlay spi0-spidev2-gpio22-overlay camera-gpio16-high-overlay camera-py12-high-overlay
 
 Target_dtbo := $(addsuffix .dtbo,$(Target_dts))

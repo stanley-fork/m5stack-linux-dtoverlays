@@ -26,7 +26,7 @@
 #include <linux/pinctrl/pinconf-generic.h>
 
 /* ============================================================================
- * 寄存器定义
+ * Register definitions
  * ============================================================================ */
 
 #define M5IOE1_UID_L                    0x00
@@ -81,7 +81,7 @@
 #define M5IOE1_OFF_TIME                 0xB2
 #define M5IOE1_REG_MAX                  0xFF
 
-/* ADC控制位定义 */
+/* ADC control bit definitions */
 #define M5IOE1_ADC_CTRL_BUSY            (1 << 7)
 #define M5IOE1_ADC_CTRL_START           (1 << 6)
 #define M5IOE1_ADC_CTRL_CH_MASK         0x07
@@ -91,17 +91,17 @@
 #define M5IOE1_ADC_CH_ADC3              3  /* IO5 */
 #define M5IOE1_ADC_CH_ADC4              4  /* IO7 */
 
-/* 温度传感器控制位定义 */
+/* Temperature sensor control bit definitions */
 #define M5IOE1_TEMP_CTRL_BUSY           (1 << 7)
 #define M5IOE1_TEMP_CTRL_START          (1 << 6)
 
-/* I2C配置位定义 */
+/* I2C configuration bit definitions */
 #define M5IOE1_I2C_CFG_INTERNAL_PULL    (1 << 6)
 #define M5IOE1_I2C_CFG_WAKE_TYPE        (1 << 5)
 #define M5IOE1_I2C_CFG_SPD              (1 << 4)
 #define M5IOE1_I2C_CFG_SLEEP_MASK       0x0F
 
-/* LED配置位定义 */
+/* LED configuration bit definitions */
 #define M5IOE1_LED_CFG_REFRESH          (1 << 6)
 #define M5IOE1_LED_CFG_LED_MASK         0x3F
 
@@ -109,7 +109,7 @@
 #define M5IOE1_PWM_POL_BIT              (1 << 6)
 #define M5IOE1_PWM_DUTY_MASK            0x0F
 
-/* 默认值定义 */
+/* Default value definitions */
 #define M5IOE1_DEFAULT_GPIO_DRV_L       0x00
 #define M5IOE1_DEFAULT_GPIO_DRV_H       0x00
 #define M5IOE1_DEFAULT_PWM_FREQ_L       0xF4
@@ -123,28 +123,28 @@
 #define M5IOE1_ADC_MAX_VAL              ((1 << M5IOE1_ADC_RESOLUTION) - 1)
 #define M5IOE1_HW_ID_PROC_NAME          "cardputerzero_hw_id"
 
-/* ADC超时时间 */
+/* ADC timeout */
 #define M5IOE1_ADC_TIMEOUT_MS           100
 
-/* GPIO方向定义 */
+/* GPIO direction definitions */
 #define M5IOE1_DIRECTION_TO_GPIOD(x) \
     ((x) ? GPIO_LINE_DIRECTION_OUT : GPIO_LINE_DIRECTION_IN)
 
 #define GPIOD_DIRECTION_TO_M5IOE1(x) \
     ((x) == GPIO_LINE_DIRECTION_OUT ? 1 : 0)
 
-/* ADC通道枚举 */
+/* ADC channel enumeration */
 enum m5ioe1_adc_channel {
     M5IOE1_ADC_CHANNEL_1 = 0,  /* IO2 */
     M5IOE1_ADC_CHANNEL_2,      /* IO4 */
     M5IOE1_ADC_CHANNEL_3,      /* IO5 */
     M5IOE1_ADC_CHANNEL_4,      /* IO7 */
-    M5IOE1_ADC_CHANNEL_TEMP,   /* 温度传感器 */
-    M5IOE1_ADC_CHANNEL_VREF,   /* 参考电压 */
+    M5IOE1_ADC_CHANNEL_TEMP,   /* Temperature sensor */
+    M5IOE1_ADC_CHANNEL_VREF,   /* Reference voltage */
     M5IOE1_ADC_NUM_CHANNELS,
 };
 
-/* Pinctrl功能定义 */
+/* Pinctrl function definitions */
 enum m5ioe1_pin_function {
     M5IOE1_FUNC_GPIO = 0,
     M5IOE1_FUNC_ADC,
@@ -171,7 +171,7 @@ struct m5ioe1_priv {
 };
 
 /* ============================================================================
- * Regmap 配置
+ * Regmap configuration
  * ============================================================================ */
 
 static bool m5ioe1_readable_reg(struct device *dev, unsigned int reg)
@@ -276,7 +276,7 @@ static struct regmap *m5ioe1_setup_regmap(struct i2c_client *i2c,
 }
 
 /* ============================================================================
- * GPIO 功能实现
+ * GPIO implementation
  * ============================================================================ */
 
 static int m5ioe1_gpio_get_direction(struct gpio_chip *chip, unsigned offset)
@@ -484,7 +484,7 @@ static int m5ioe1_gpio_setup(struct m5ioe1_priv *m5ioe1,
 }
 
 /* ============================================================================
- * PWM 功能实现
+ * PWM implementation
  * ============================================================================ */
 
 static int m5ioe1_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
@@ -632,7 +632,7 @@ static int m5ioe1_pwm_setup(struct m5ioe1_priv *m5ioe1,
 }
 
 /* ============================================================================
- * ADC/IIO 功能实现
+ * ADC/IIO implementation
  * ============================================================================ */
 
 static int m5ioe1_adc_read_raw(struct m5ioe1_priv *m5ioe1,
@@ -878,7 +878,7 @@ static int m5ioe1_adc_setup(struct m5ioe1_priv *m5ioe1)
 }
 
 /* ============================================================================
- * Pinctrl 功能实现
+ * Pinctrl implementation
  * ============================================================================ */
 
 static const struct pinctrl_pin_desc m5ioe1_pins[] = {
@@ -1213,7 +1213,7 @@ static void m5ioe1_remove_hw_id_proc(struct m5ioe1_priv *m5ioe1)
 }
 
 /* ============================================================================
- * Reset 和 Probe 实现
+ * Reset and probe implementation
  * ============================================================================ */
 
 static int m5ioe1_reset_setup(struct m5ioe1_priv *m5ioe1)

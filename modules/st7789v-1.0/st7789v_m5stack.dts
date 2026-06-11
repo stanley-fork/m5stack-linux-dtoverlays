@@ -30,18 +30,18 @@ fragment@1 {
                 regulator-name = "backlight-vcc";
                 regulator-min-microvolt = <3300000>;
                 regulator-max-microvolt = <3300000>;
-                regulator-boot-on;  /* 启动时就开启 */
+                regulator-boot-on;  /* Enable at boot */
             };
 
             backlight_pwm: backlight {
                 compatible = "m5stack,pwm-backlight";
                 pwms = <&py32io16 3 2000000 0>;
                 
-                /* 不指定brightness-levels将使用默认的CIE1931算法 */
+                /* Use the default CIE1931 algorithm when brightness-levels is not specified */
                 default-brightness-level = <3071>;
                 
                 power-supply = <&backlight_power>;
-                /* 强制初始化时开启背光 */
+                /* Force the backlight on during initialization */
                 force-enable-on-init;
             };
 
@@ -71,7 +71,7 @@ fragment@2 {
 #endif
             // reset-gpios = <&py32io16 4 1>;
 
-            // PWM背光
+            // PWM backlight
             backlight = <&backlight_pwm>;
 
             ram-x-offset = <0>;

@@ -48,15 +48,15 @@ static const struct panel_mipi_dbi_format panel_mipi_dbi_formats[] = {
 };
 
 /*
- * 包装结构体：在 mipi_dbi_dev 的基础上增加 TE（Tearing Effect）引脚相关字段。
- * dbidev 必须作为第一个成员，方便 container_of 转换。
+ * Wrapper structure: extends mipi_dbi_dev with TE (Tearing Effect) pin fields.
+ * dbidev must be the first member so container_of can cast it safely.
  */
 struct panel_mipi_dbi_device {
     struct mipi_dbi_dev dbidev;
 
-    struct gpio_desc *te;		/* TE 引脚（可选） */
-    int te_irq;			/* TE 对应的中断号 */
-    struct completion te_completion;/* 用于等待 TE 中断 */
+    struct gpio_desc *te;		/* Optional TE pin */
+    int te_irq;			/* IRQ number for TE */
+    struct completion te_completion;/* Used to wait for the TE IRQ */
 };
 
 static inline struct panel_mipi_dbi_device *
@@ -258,7 +258,7 @@ static void panel_mipi_dbi_commands_execute(struct mipi_dbi *dbi,
     }
 }
 
-/* TE 中断处理函数：收到 TE 信号后唤醒等待者 */
+/* TE interrupt handler: wake waiters when a TE signal arrives */
 static irqreturn_t panel_mipi_dbi_te_isr(int irq, void *data)
 {
     struct panel_mipi_dbi_device *panel = data;
@@ -268,7 +268,7 @@ static irqreturn_t panel_mipi_dbi_te_isr(int irq, void *data)
     return IRQ_HANDLED;
 }
 
-/* 在刷新前等待面板的 TE 同步信号 */
+/* Wait for the panel TE sync signal before flushing */
 static void panel_mipi_dbi_wait_for_te(struct panel_mipi_dbi_device *panel)
 {
     if (!panel->te)
@@ -276,7 +276,7 @@ static void panel_mipi_dbi_wait_for_te(struct panel_mipi_dbi_device *panel)
 
     reinit_completion(&panel->te_completion);
 
-    /* 只在等待期间打开中断，平时关闭以省电 */
+    /* Enable the IRQ only while waiting; keep it disabled otherwise to save power */
     enable_irq(panel->te_irq);
 
     if (!wait_for_completion_timeout(&panel->te_completion,
@@ -307,7 +307,7 @@ static void panel_mipi_dbi_enable(struct drm_simple_display_pipe *pipe,
     if (!ret)
         panel_mipi_dbi_commands_execute(dbi, dbidev->driver_private);
 
-    /* 如果存在 TE 引脚，使能面板的 TE 输出（V-blank 模式） */
+    /* If a TE pin is present, enable the panel TE output in V-blank mode */
     if (panel->te)
         mipi_dbi_command(dbi, MIPI_DCS_SET_TEAR_ON,
                  MIPI_DCS_TEAR_MODE_VBLANK);
@@ -317,7 +317,7 @@ out_exit:
     drm_dev_exit(idx);
 }
 
-/* 自定义 update 回调：在真正刷新前先等待 TE 信号，避免画面撕裂 */
+/* Custom update callback: wait for TE before flushing to avoid tearing */
 static void panel_mipi_dbi_pipe_update(struct drm_simple_display_pipe *pipe,
                        struct drm_plane_state *old_state)
 {
@@ -444,7 +444,7 @@ static int panel_mipi_dbi_spi_probe(struct spi_device *spi)
     if (device_property_present(dev, "write-only"))
         dbi->read_commands = NULL;
 
-    /* 获取 TE 引脚（可选），并申请对应中断 */
+    /* Get the optional TE pin and request its IRQ */
     panel->te = devm_gpiod_get_optional(dev, "te", GPIOD_IN);
     if (IS_ERR(panel->te))
         return dev_err_probe(dev, PTR_ERR(panel->te), "Failed to get GPIO 'te'\n");
@@ -458,8 +458,8 @@ static int panel_mipi_dbi_spi_probe(struct spi_device *spi)
                          "Failed to get TE irq\n");
 
         /*
-         * 使用 IRQF_NO_AUTOEN，申请后中断默认是关闭的，
-         * 只在 wait_for_te() 中需要时才打开。
+         * Use IRQF_NO_AUTOEN so the IRQ stays disabled after it is requested,
+         * and enable it only when wait_for_te() needs it.
          */
         ret = devm_request_irq(dev, panel->te_irq, panel_mipi_dbi_te_isr,
                        IRQF_TRIGGER_RISING | IRQF_NO_AUTOEN,

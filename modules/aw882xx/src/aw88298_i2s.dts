@@ -27,8 +27,8 @@
                 #address-cells = <1>;
 		#size-cells = <0>;
                 reg = <0x34>;
-                aw-re-min = <4000>; /*Re 校准范围最小值（mOhms）*/
-                aw-re-max = <10000>; /*Re 校准范围最大值（mOhms）*/
+                aw-re-min = <4000>; /*Minimum Re calibration range (mOhms)*/
+                aw-re-max = <10000>; /*Maximum Re calibration range (mOhms)*/
                 /*aw-cali-mode = "none";*/
                 status = "okay";
             };

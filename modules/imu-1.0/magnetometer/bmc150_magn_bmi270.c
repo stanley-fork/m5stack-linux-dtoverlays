@@ -160,11 +160,11 @@ static int bmi270_aux_switch_sync(struct bmi270_aux_bridge *bridge)
 }
 
 /*
- * regmap_bus.write 回调形参说明：
- * context: devm_regmap_init() 传入的 struct bmi270_aux_bridge。
- * data: 调用方传入的写缓冲区，data[0] 是下游 BMM150 起始寄存器地址，
- *       data[1..count-1] 是要连续写入的数据。
- * count: data 缓冲区长度，至少需要 2 字节，即 1 字节寄存器地址 + 1 字节数据。
+ * regmap_bus.write callback parameter description:
+ * context: struct bmi270_aux_bridge passed to devm_regmap_init().
+ * data: write buffer supplied by the caller; data[0] is the downstream BMM150 start register address,
+ *       data[1..count-1] contains the data to write sequentially.
+ * count: length of the data buffer; at least 2 bytes are required: 1 register-address byte plus 1 data byte.
  */
 static int bmi270_regmap_write(
 	void *context, const void *data, size_t count)
@@ -215,12 +215,12 @@ out_unlock:
 }
 
 /*
- * regmap_bus.read 回调形参说明：
- * context: devm_regmap_init() 传入的 struct bmi270_aux_bridge。
- * reg: 调用方要读取的下游 BMM150 寄存器地址缓冲区。
- * reg_size: reg 缓冲区长度，通常为 1 字节寄存器地址。
- * val: 读取结果输出缓冲区。
- * val_size: 调用方期望读取的数据长度。
+ * regmap_bus.read callback parameter description:
+ * context: struct bmi270_aux_bridge passed to devm_regmap_init().
+ * reg: buffer containing the downstream BMM150 register address to read.
+ * reg_size: length of the reg buffer, usually a 1-byte register address.
+ * val: output buffer for the read result.
+ * val_size: number of bytes the caller expects to read.
  */
 static int bmi270_regmap_read(void *context,
 			      const void *reg, size_t reg_size,
