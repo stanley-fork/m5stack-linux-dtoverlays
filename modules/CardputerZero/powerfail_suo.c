@@ -66,18 +66,18 @@ static void powerfail_suo_work(struct work_struct *work)
         return;
     }
 
-    dev_emerg(data->dev, "Power fail detected, execute SysRq S-U-O sequence\n");
-    handle_sysrq('i');
-    msleep(100);
-    /*
-     * S: sync
-     *
-     * 对应 Magic SysRq:
-     *   echo s > /proc/sysrq-trigger
-    */
-    dev_emerg(data->dev, "SysRq S: emergency sync filesystems\n");
-    handle_sysrq('s');
-    msleep(2000);
+    // dev_emerg(data->dev, "Power fail detected, execute SysRq S-U-O sequence\n");
+    // handle_sysrq('i');
+    // msleep(100);
+    // /*
+    //  * S: sync
+    //  *
+    //  * 对应 Magic SysRq:
+    //  *   echo s > /proc/sysrq-trigger
+    // */
+    // dev_emerg(data->dev, "SysRq S: emergency sync filesystems\n");
+    // handle_sysrq('s');
+    // // msleep(2000);
 
     /*
      * U: remount readonly
@@ -88,23 +88,23 @@ static void powerfail_suo_work(struct work_struct *work)
     dev_emerg(data->dev, "SysRq U: emergency remount filesystems readonly\n");
     handle_sysrq('u');
 
-    /*
-     * O: power off
-     *
-     * 对应 Magic SysRq:
-     *   echo o > /proc/sysrq-trigger
-     *
-     * 注意：
-     * kernel_power_off() 是否真正能断电，取决于你的板级 PMIC、
-     * 电源管理驱动、pm_power_off 回调是否配置正确。
-     */
-    dev_emerg(data->dev, "SysRq O: power off now\n");
-    kernel_power_off();
+    // /*
+    //  * O: power off
+    //  *
+    //  * 对应 Magic SysRq:
+    //  *   echo o > /proc/sysrq-trigger
+    //  *
+    //  * 注意：
+    //  * kernel_power_off() 是否真正能断电，取决于你的板级 PMIC、
+    //  * 电源管理驱动、pm_power_off 回调是否配置正确。
+    //  */
+    // dev_emerg(data->dev, "SysRq O: power off now\n");
+    // kernel_power_off();
 
     /*
      * 正常情况下不会执行到这里。
      */
-    dev_emerg(data->dev, "kernel_power_off returned unexpectedly\n");
+    // dev_emerg(data->dev, "kernel_power_off returned unexpectedly\n");
 }
 
 static irqreturn_t powerfail_suo_irq_handler(int irq, void *dev_id)

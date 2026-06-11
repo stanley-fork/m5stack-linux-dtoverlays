@@ -70,16 +70,18 @@ config_setup:
 	python3 /tmp/rpi-config.py --no-backup set dtparam=i2c_arm on
 	python3 /tmp/rpi-config.py --no-backup set dtparam=i2s on
 	python3 /tmp/rpi-config.py --no-backup set dtparam=spi on
+	python3 /tmp/rpi-config.py --no-backup set dtparam=audio off
 	python3 /tmp/rpi-config.py --no-backup section-set all enable_uart 1
 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay cardputerzero-overlay
 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay camera-gpio16-high-overlay
 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay bq27220
 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay gpio-ir,gpio_pin=13,gpio_pull=up
 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay gpio-ir-tx,gpio_pin=12
+	python3 /tmp/rpi-config.py --no-backup section-del all dtoverlay pwm-ir-tx,gpio_pin=12,func=4
 ifeq ($(CONFIG_CARDPUTERO_V0_5),y)
 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay bmi270_bmm150_overlay
-#	python3 /tmp/rpi-config.py --no-backup section-del all dtoverlay spk-gpio24-high-overlay
-# 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay lsm6ds3tr-overlay
+	python3 /tmp/rpi-config.py --no-backup section-del all dtoverlay spk-gpio24-high-overlay
+	python3 /tmp/rpi-config.py --no-backup section-del all dtoverlay lsm6ds3tr-overlay
 else
 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay spk-gpio24-high-overlay
 	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay bmi270_overlay
