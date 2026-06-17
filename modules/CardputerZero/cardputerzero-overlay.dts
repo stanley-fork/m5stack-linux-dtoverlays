@@ -341,11 +341,6 @@
             };
 
 #if CONFIG_CARDPUTERO_V0_5
-            mic_mute_switch: mic-mute-switch {
-                compatible = "simple-audio-amplifier";
-                enable-gpios = <&m5ioe1 3 0>;
-                sound-name-prefix = "Mic Switch";
-            };
             spk_mute_switch: spk-mute-switch {
                 compatible = "simple-audio-amplifier";
 
@@ -355,6 +350,7 @@
             };
 #endif
 
+
             sound {
                 compatible = "simple-audio-card";
                 simple-audio-card,name = "ES8389-Audio";
@@ -362,7 +358,6 @@
 
 #if CONFIG_CARDPUTERO_V0_5
                 simple-audio-card,aux-devs = <
-                    &mic_mute_switch
                     &spk_mute_switch
                 >;
                 simple-audio-card,widgets =
@@ -378,10 +373,8 @@
                     "Headphone Jack", "HPOL",
                     "Headphone Jack", "HPOR",
 
-                    "Mic Switch INL", "Mic Jack",
-                    "Mic Switch INR", "Mic Jack",
-                    "INPUT1", "Mic Switch OUTL",
-                    "INPUT2", "Mic Switch OUTR",
+                    "INPUT1", "Mic Jack",
+                    "INPUT2", "Mic Jack",
 
                     "Speaker Switch INL", "HPOL",
                     "Speaker Switch INR", "HPOR",
@@ -492,11 +485,6 @@
         };
     };
 };
-
-
-
-
-
 
 
 
