@@ -20,10 +20,13 @@
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/atomic.h>
+#include <linux/backlight.h>
 
 struct powerfail_suo_data {
     struct device *dev;
     struct gpio_desc *gpiod;
+    struct gpio_desc *disabled_gpiod;
+    struct backlight_device *backlight;
     int irq;
     u32 debounce_ms;
     atomic_t triggered;
@@ -67,6 +70,7 @@ static void powerfail_suo_work(struct work_struct *work)
     }
 
     // dev_emerg(data->dev, "Power fail detected, execute SysRq S-U-O sequence\n");
+
     // handle_sysrq('i');
     // msleep(100);
     // /*
@@ -100,6 +104,16 @@ static void powerfail_suo_work(struct work_struct *work)
     //  */
     // dev_emerg(data->dev, "SysRq O: power off now\n");
     // kernel_power_off();
+
+    if (data->backlight) {
+        dev_emerg(data->dev, "set backlight brightness to 0\n");
+        backlight_device_set_brightness(data->backlight, 0);
+    }
+
+    if (data->disabled_gpiod) {
+        dev_emerg(data->dev, "assert disabled gpio low\n");
+        gpiod_set_value_cansleep(data->disabled_gpiod, 1);
+    }
 
     /*
      * Normally execution should not reach here.
@@ -159,6 +173,19 @@ static int powerfail_suo_probe(struct platform_device *pdev)
         dev_err(dev, "failed to get irq gpio: %d\n", ret);
         return ret;
     }
+
+    data->disabled_gpiod = devm_gpiod_get_optional(dev, "disabled",
+                                                   GPIOD_OUT_LOW);
+    if (IS_ERR(data->disabled_gpiod))
+        return dev_err_probe(dev,
+                             PTR_ERR(data->disabled_gpiod),
+                             "failed to get disabled gpio\n");
+
+    data->backlight = devm_of_find_backlight(dev);
+    if (IS_ERR(data->backlight))
+        return dev_err_probe(dev,
+                             PTR_ERR(data->backlight),
+                             "failed to get backlight\n");
 
     data->irq = platform_get_irq(pdev, 0);
     if (data->irq < 0) {
