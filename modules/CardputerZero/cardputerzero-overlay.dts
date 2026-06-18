@@ -283,6 +283,7 @@
         target-path = "/";
         __overlay__ {
 
+#if CONFIG_CARDPUTERO_V0_5
             powerfail {
                 compatible = "cardputerzero,powerfail-suo";
                 debounce-ms = <500>;
@@ -292,7 +293,7 @@
                 backlight = <&backlight_pwm>;
                 disabled-gpios = <&m5ioe1 11 1>;
             };
-
+#endif
             es8390_mclk: es8390_mclk {
                 compatible = "fixed-clock";
                 #clock-cells = <0>;
