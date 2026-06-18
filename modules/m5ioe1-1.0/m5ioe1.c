@@ -569,10 +569,37 @@ static const struct pwm_ops m5ioe1_pwm_ops = {
     .apply = m5ioe1_pwm_apply,
 };
 
+static int m5ioe1_pwm_disable_all(struct m5ioe1_priv *m5ioe1)
+{
+    struct device *dev = &m5ioe1->i2c->dev;
+    int ret, i;
+
+    for (i = 0; i < 4; i++) {
+        unsigned int pwm_l_reg = M5IOE1_PWM1_L + (i * 2);
+        unsigned int pwm_h_reg = M5IOE1_PWM1_H + (i * 2);
+
+        ret = regmap_write(m5ioe1->regmap, pwm_h_reg, 0x00);
+        if (ret) {
+            dev_err(dev, "Failed to disable PWM%d_H: %d\n",
+                i + 1, ret);
+            return ret;
+        }
+
+        ret = regmap_write(m5ioe1->regmap, pwm_l_reg, 0x00);
+        if (ret) {
+            dev_err(dev, "Failed to disable PWM%d_L: %d\n",
+                i + 1, ret);
+            return ret;
+        }
+    }
+
+    return 0;
+}
+
 static int m5ioe1_pwm_setup(struct m5ioe1_priv *m5ioe1,
                 int m5ioe1_dev_id)
 {
-    int ret, i;
+    int ret;
     struct device *dev = &m5ioe1->i2c->dev;
     struct pwm_chip *chip;
 
@@ -601,24 +628,9 @@ static int m5ioe1_pwm_setup(struct m5ioe1_priv *m5ioe1,
         return ret;
     }
 
-    for (i = 0; i < 4; i++) {
-        unsigned int pwm_l_reg = M5IOE1_PWM1_L + (i * 2);
-        unsigned int pwm_h_reg = M5IOE1_PWM1_H + (i * 2);
-
-        ret = regmap_write(m5ioe1->regmap, pwm_l_reg, 0x00);
-        if (ret) {
-            dev_err(dev, "Failed to init PWM%d_L: %d\n",
-                i + 1, ret);
-            return ret;
-        }
-
-        ret = regmap_write(m5ioe1->regmap, pwm_h_reg, 0x00);
-        if (ret) {
-            dev_err(dev, "Failed to init PWM%d_H: %d\n",
-                i + 1, ret);
-            return ret;
-        }
-    }
+    ret = m5ioe1_pwm_disable_all(m5ioe1);
+    if (ret)
+        return ret;
 
     ret = devm_pwmchip_add(dev, chip);
     if (ret < 0) {
@@ -1373,9 +1385,16 @@ static void m5ioe1_remove(struct i2c_client *client)
 static void m5ioe1_shutdown(struct i2c_client *client)
 {
     struct m5ioe1_priv *m5ioe1 = i2c_get_clientdata(client);
+    int ret;
 
     if (!m5ioe1)
         return;
+
+    ret = m5ioe1_pwm_disable_all(m5ioe1);
+    if (ret)
+        dev_warn(&client->dev, "Failed to disable all PWM outputs: %d\n",
+             ret);
+
     regmap_update_bits(m5ioe1->regmap, M5IOE1_GPIO_M_H, BIT(4), 0);
 }
 

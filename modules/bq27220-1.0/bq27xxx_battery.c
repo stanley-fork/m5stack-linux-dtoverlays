@@ -124,6 +124,7 @@
 #define BQ27220_DM_DESIGN_ENERGY	0x92a1
 #define BQ27220_DM_DESIGN_VOLTAGE	0x92a3
 #define BQ27220_DM_CHARGE_TERM_VOLTAGE	0x92a5
+#define BQ27220_DM_EMF			0x92a7
 #define BQ27220_DM_GAUGING_CONFIG	0x929b
 #define BQ27220_DM_CEDV_C0		0x92a9
 #define BQ27220_DM_CEDV_R0		0x92ab
@@ -2024,7 +2025,7 @@ struct bq27220_dm_default_u8 {
 
 static const struct bq27220_dm_default_u16 bq27220_f7_dm_defaults_u16[] = {
 	{ "gauging-config", BQ27220_DM_GAUGING_CONFIG, 0x0d31 },
-	{ "emf", BQ27220_DM_DESIGN_VOLTAGE, 3679 },
+	{ "emf", BQ27220_DM_EMF, 3679 },
 	{ "cedv-c0", BQ27220_DM_CEDV_C0, 430 },
 	{ "cedv-r0", BQ27220_DM_CEDV_R0, 334 },
 	{ "cedv-t0", BQ27220_DM_CEDV_T0, 4626 },
@@ -2072,38 +2073,6 @@ static void bq27220_battery_update_f7_profile(struct bq27xxx_device_info *di,
 				updated);
 }
 
-static bool bq27220_battery_design_capacity_matches(struct bq27xxx_device_info *di,
-						    int capacity_mah)
-{
-	u16 old_capacity;
-	int ret;
-
-	if (capacity_mah == -EINVAL)
-		return false;
-
-	ret = bq27220_battery_read_dm_reg(di, BQ27220_DM_DESIGN_CAPACITY,
-					  &old_capacity);
-	if (ret < 0) {
-		dev_warn(di->dev,
-			 "failed to read bq27220 design-capacity before config: %d\n",
-			 ret);
-		return false;
-	}
-
-	if (old_capacity != capacity_mah) {
-		dev_info(di->dev,
-			 "bq27220 design-capacity differs, chip has %u, dts has %d\n",
-			 old_capacity, capacity_mah);
-		return false;
-	}
-
-	dev_info(di->dev,
-		 "bq27220 design-capacity already matches dts: %d\n",
-		 capacity_mah);
-
-	return true;
-}
-
 static void bq27220_battery_program_config(struct bq27xxx_device_info *di,
 					   int capacity_mah,
 					   int design_energy_mwh,
@@ -2126,9 +2095,6 @@ static void bq27220_battery_program_config(struct bq27xxx_device_info *di,
 
 	ret = bq27220_battery_full_access(di);
 	if (ret < 0)
-		goto out_seal;
-
-	if (bq27220_battery_design_capacity_matches(di, capacity_mah))
 		goto out_seal;
 
 	ret = bq27220_battery_set_cfgupdate(di, true);
