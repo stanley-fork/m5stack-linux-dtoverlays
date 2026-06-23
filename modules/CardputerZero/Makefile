@@ -4,9 +4,9 @@ ROOTFSPATH ?=
 PWD := $(shell pwd)
 ARCH := $(shell uname -m)
 
-ifndef CONFIG_CARDPUTERO_V0_3
-CONFIG_CARDPUTERO_V0_5=y
-endif
+# ifndef CONFIG_CARDPUTERO_V0_3
+# CONFIG_CARDPUTERO_V0_5=y
+# endif
 
 
 Target_ko := powerfail_suo
@@ -64,27 +64,27 @@ endif
 	echo "ok"
 
 config_setup:
-	[ -f "/tmp/rpi-config.py" ] || curl -fsSL -o "/tmp/rpi-config.py" -L "https://gist.githubusercontent.com/dianjixz/16b2fabbc4a2a573a7c10f212d87f282/raw/rpi-config.py"
-	python3 /tmp/rpi-config.py --no-backup set camera_auto_detect 0
-	python3 /tmp/rpi-config.py --no-backup add dtoverlay imx219
-	python3 /tmp/rpi-config.py --no-backup set dtparam=i2c_arm on
-	python3 /tmp/rpi-config.py --no-backup set dtparam=i2s on
-	python3 /tmp/rpi-config.py --no-backup set dtparam=spi on
-	python3 /tmp/rpi-config.py --no-backup set dtparam=audio off
-	python3 /tmp/rpi-config.py --no-backup section-set all enable_uart 1
-	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay cardputerzero-overlay
-	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay camera-gpio16-high-overlay
-	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay bq27220
-	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay gpio-ir,gpio_pin=13,gpio_pull=up
-	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay gpio-ir-tx,gpio_pin=12
-	python3 /tmp/rpi-config.py --no-backup section-del all dtoverlay pwm-ir-tx,gpio_pin=12,func=4
+	[ -f "/opt/rpi-config.py" ] || curl -fsSL -o "/opt/rpi-config.py" -L "https://gist.githubusercontent.com/dianjixz/16b2fabbc4a2a573a7c10f212d87f282/raw/rpi-config.py"
+	python3 /opt/rpi-config.py --no-backup set camera_auto_detect 0
+	python3 /opt/rpi-config.py --no-backup add dtoverlay imx219
+	python3 /opt/rpi-config.py --no-backup set dtparam=i2c_arm on
+	python3 /opt/rpi-config.py --no-backup set dtparam=i2s on
+	python3 /opt/rpi-config.py --no-backup set dtparam=spi on
+	python3 /opt/rpi-config.py --no-backup set dtparam=audio off
+	python3 /opt/rpi-config.py --no-backup section-set all enable_uart 1
+	python3 /opt/rpi-config.py --no-backup section-add all dtoverlay cardputerzero-overlay
+	python3 /opt/rpi-config.py --no-backup section-add all dtoverlay camera-gpio16-high-overlay
+	python3 /opt/rpi-config.py --no-backup section-add all dtoverlay bq27220
+	python3 /opt/rpi-config.py --no-backup section-add all dtoverlay gpio-ir,gpio_pin=13,gpio_pull=up
+	python3 /opt/rpi-config.py --no-backup section-add all dtoverlay gpio-ir-tx,gpio_pin=12
+	python3 /opt/rpi-config.py --no-backup section-del all dtoverlay pwm-ir-tx,gpio_pin=12,func=4
 ifeq ($(CONFIG_CARDPUTERO_V0_5),y)
-	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay bmi270_bmm150_overlay
-	python3 /tmp/rpi-config.py --no-backup section-del all dtoverlay spk-gpio24-high-overlay
-	python3 /tmp/rpi-config.py --no-backup section-del all dtoverlay lsm6ds3tr-overlay
+	python3 /opt/rpi-config.py --no-backup section-add all dtoverlay bmi270_bmm150_overlay
+	python3 /opt/rpi-config.py --no-backup section-del all dtoverlay spk-gpio24-high-overlay
+	python3 /opt/rpi-config.py --no-backup section-del all dtoverlay lsm6ds3tr-overlay
 else
-	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay spk-gpio24-high-overlay
-	python3 /tmp/rpi-config.py --no-backup section-add all dtoverlay bmi270_overlay
+	python3 /opt/rpi-config.py --no-backup section-add all dtoverlay spk-gpio24-high-overlay
+	python3 /opt/rpi-config.py --no-backup section-add all dtoverlay bmi270_overlay
 endif
 
 .PHONY: all clean install install_dts config_setup

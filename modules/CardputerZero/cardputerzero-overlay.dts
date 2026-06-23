@@ -51,8 +51,8 @@
                 #sound-dai-cells = <0>;
                 clock-names = "mclk";
                 clocks = <&es8390_mclk>;
-                // snd_def-ADCL_PGA_Volume = <8>;
-                // snd_def-ADCR_PGA_Volume = <8>;
+                snd_def-ADCL_PGA_Volume = <8>;
+                snd_def-ADCR_PGA_Volume = <8>;
                 status = "okay";
             };
 #if CONFIG_CARDPUTERO_V0_5
