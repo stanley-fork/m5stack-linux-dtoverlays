@@ -226,8 +226,8 @@
                     0x0009006f /* row=0x00 col=0x09 keycode=0x006f  KEY_DELETE       del */
 
                     /* 0x0403000f  Sym function key */ 
-                    0x01000010 /* row=0x01 col=0x00 keycode=0x0010  KEY_Q          Q */
-                    0x01010011 /* row=0x01 col=0x01 keycode=0x0011  KEY_W          W */
+                    0x010000e0 /* row=0x01 col=0x00 keycode=0x00e0  KEY_BRIGHTNESSDOWN  BRIGHTNESSDOWN */
+                    0x010100e1 /* row=0x01 col=0x01 keycode=0x00e1  KEY_BRIGHTNESSUP    BRIGHTNESSUP */
                     0x01020012 /* row=0x01 col=0x02 keycode=0x0012  KEY_E          E */
                     0x01030013 /* row=0x01 col=0x03 keycode=0x0013  KEY_R          R */
                     0x01040014 /* row=0x01 col=0x04 keycode=0x0014  KEY_T          T */
@@ -239,9 +239,9 @@
 
 
                     0x04012a3a /* KEY_LEFTSHIFT/KEY_CAPSLOCK shared: single click KEY_LEFTSHIFT, double click KEY_CAPSLOCK */
-                    0x0200001e /* row=0x02 col=0x00 keycode=0x001e  KEY_A          A */
-                    0x0201001f /* row=0x02 col=0x01 keycode=0x001f  KEY_S          S */
-                    0x02020020 /* row=0x02 col=0x02 keycode=0x0020  KEY_D          D */
+                    0x02000071 /* row=0x02 col=0x00 keycode=0x0071  KEY_MUTE       MUTE */
+                    0x02010072 /* row=0x02 col=0x01 keycode=0x0072  KEY_VOLUMEDOWN VOLUMEDOWN */
+                    0x02020073 /* row=0x02 col=0x02 keycode=0x0073  KEY_VOLUMEUP   VOLUMEUP */
                     0x02030067 /* row=0x02 col=0x03 keycode=0x0067  KEY_UP          F */
                     0x02040022 /* row=0x02 col=0x04 keycode=0x0022  KEY_G          G */
                     0x02050023 /* row=0x02 col=0x05 keycode=0x0023  KEY_H          H */
