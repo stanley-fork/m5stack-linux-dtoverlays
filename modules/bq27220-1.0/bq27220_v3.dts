@@ -1,0 +1,23 @@
+// Definitions for Waveshare WM8960 https://github.com/waveshare/WM8960-Audio-HAT
+/dts-v1/;
+/plugin/;
+// dtc -@ -I dts -O dtb -o es8389-soundcard-overlay.dtbo  es8389-soundcard-overlay.dts
+/ {
+    compatible = "brcm,bcm2835";
+    fragment@0 {
+        target = <&i2c1>;
+        __overlay__ {
+            #address-cells = <1>;
+            #size-cells = <0>;
+
+            battery: bq27220@55 {
+                compatible = "ti,bq27220";
+                reg = <0x55>;
+                ti,resistor-sense-mohm = <10>;
+                ti,design-voltage-microvolt = <3700000>;
+                ti,design-capacity-nanoamp-hours = /bits/ 64 <1200000000>;
+                ti,design-energy-nanowatt-hours = /bits/ 64 <4400000000>;
+            };
+        };
+    };
+};

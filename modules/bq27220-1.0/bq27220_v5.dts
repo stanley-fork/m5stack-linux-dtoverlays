@@ -15,14 +15,9 @@
                 reg = <0x55>;
                 ti,resistor-sense-mohm = <10>;
                 ti,design-voltage-microvolt = <3700000>;
-#if CONFIG_CARDPUTERO_V0_5
                 ti,design-capacity-nanoamp-hours = /bits/ 64 <2000000000>;
                 ti,design-energy-nanowatt-hours = /bits/ 64 <7400000000>;
                 ti,use-external-ntc;
-#else
-                ti,design-capacity-nanoamp-hours = /bits/ 64 <1200000000>;
-                ti,design-energy-nanowatt-hours = /bits/ 64 <4400000000>;
-#endif
             };
         };
     };
