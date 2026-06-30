@@ -375,7 +375,7 @@ static void tca8418_layer_update_led(struct tca8418_layer_key *layer)
 	if (layer->longpress)
 		tca8418_led_set(layer->led, TCA8418_LED_FAST);
 	else if (layer->locked)
-		tca8418_led_set(layer->led, TCA8418_LED_BLINK);
+		tca8418_led_set(layer->led, TCA8418_LED_ON);
 	else if (layer->oneshot)
 		tca8418_led_set(layer->led, TCA8418_LED_BLINK);
 	else
@@ -415,7 +415,8 @@ static void tca8418_asmux_deactivate(struct tca8418_keypad *keypad_data)
 	cancel_delayed_work_sync(&keypad_data->asmux_longpress_work);
 	cancel_delayed_work_sync(&keypad_data->asmux_blink_off_work);
 
-	if (keypad_data->asmux_locked || keypad_data->asmux_shift_active)
+	if (keypad_data->asmux_locked || keypad_data->asmux_shift_active ||
+	    keypad_data->asmux_longpress)
 		tca8418_report_key(keypad_data, keypad_data->asmux_button_code,
 				    KEY_LEFTSHIFT, false);
 
@@ -455,6 +456,13 @@ static void tca8418_handle_layer_key(struct tca8418_keypad *keypad_data,
 			layer->locked = false;
 			layer->oneshot = false;
 			layer->unlock_release = true;
+		} else if (layer->oneshot) {
+			layer->oneshot = false;
+			if (tca8418_time_before_ms(layer->last_release,
+						   TCA8418_DBLCLICK_MS))
+				layer->locked = true;
+			else
+				layer->unlock_release = true;
 		} else {
 			layer->oneshot = false;
 			schedule_delayed_work(&layer->longpress_work,
@@ -477,7 +485,7 @@ static void tca8418_handle_layer_key(struct tca8418_keypad *keypad_data,
 	} else if (layer->longpress) {
 		layer->longpress = false;
 	} else if (!layer->locked) {
-		layer->locked = true;
+		layer->oneshot = true;
 		layer->last_release = ktime_get();
 	}
 
@@ -500,7 +508,7 @@ static void tca8418_asmux_update_led(struct tca8418_keypad *keypad_data)
 				TCA8418_LED_FAST);
 	else if (keypad_data->asmux_locked)
 		tca8418_led_set(&keypad_data->capslock_led_ctl,
-				TCA8418_LED_BLINK);
+				TCA8418_LED_ON);
 	else if (keypad_data->asmux_oneshot)
 		tca8418_led_set(&keypad_data->capslock_led_ctl,
 				TCA8418_LED_BLINK);
@@ -531,6 +539,8 @@ static void tca8418_asmux_longpress_work(struct work_struct *work)
 		return;
 
 	keypad_data->asmux_longpress = true;
+	tca8418_report_key(keypad_data, keypad_data->asmux_button_code,
+			    KEY_LEFTSHIFT, true);
 	tca8418_asmux_update_led(keypad_data);
 }
 
@@ -550,9 +560,22 @@ static void tca8418_handle_asmux_key(struct tca8418_keypad *keypad_data,
 			return;
 		}
 
+		if (keypad_data->asmux_oneshot) {
+			keypad_data->asmux_oneshot = false;
+			if (tca8418_time_before_ms(keypad_data->asmux_last_release,
+						   TCA8418_DBLCLICK_MS)) {
+				keypad_data->asmux_locked = true;
+				tca8418_report_key(keypad_data, scan_code,
+						    KEY_LEFTSHIFT, true);
+			} else {
+				keypad_data->asmux_second_click = true;
+			}
+			tca8418_asmux_update_led(keypad_data);
+			return;
+		}
+
 		keypad_data->asmux_oneshot = false;
 
-		tca8418_report_key(keypad_data, scan_code, KEY_LEFTSHIFT, true);
 		schedule_delayed_work(&keypad_data->asmux_longpress_work,
 			msecs_to_jiffies(TCA8418_LONGPRESS_MS));
 		return;
@@ -573,15 +596,20 @@ static void tca8418_handle_asmux_key(struct tca8418_keypad *keypad_data,
 		return;
 	}
 
+	if (keypad_data->asmux_second_click) {
+		keypad_data->asmux_second_click = false;
+		tca8418_asmux_update_led(keypad_data);
+		return;
+	}
+
 	keypad_data->asmux_second_click = false;
 
 	if (keypad_data->asmux_longpress) {
 		tca8418_report_key(keypad_data, scan_code, KEY_LEFTSHIFT, false);
 		keypad_data->asmux_longpress = false;
 		tca8418_asmux_update_led(keypad_data);
-	} else {
-		keypad_data->asmux_locked = true;
-		keypad_data->asmux_oneshot = false;
+	} else if (!keypad_data->asmux_locked) {
+		keypad_data->asmux_oneshot = true;
 		keypad_data->asmux_last_release = ktime_get();
 		tca8418_asmux_update_led(keypad_data);
 	}
