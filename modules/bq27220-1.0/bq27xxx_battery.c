@@ -2688,8 +2688,21 @@ static bool bq27xxx_battery_is_full(struct bq27xxx_device_info *di, int flags)
 		return (flags & BQ27XXX_FLAG_FC);
 }
 
+static int bq27xxx_battery_read_current(struct bq27xxx_device_info *di)
+{
+	int reg = BQ27XXX_REG_AI;
+	int curr;
+
+	if (di->opts & BQ27XXX_O_BQ27220)
+		curr = di->bus.read(di, BQ27220_REG_CURRENT, false);
+	else
+		curr = bq27xxx_read(di, reg, false);
+
+	return curr;
+}
+
 /*
- * Return the battery average current in µA and the status
+ * Return the battery current in µA and the status
  * Note that current can be negative signed as well
  * Or 0 if something fails.
  */
@@ -2703,7 +2716,7 @@ static int bq27xxx_battery_current_and_status(
 	int curr;
 	int flags;
 
-	curr = bq27xxx_read(di, BQ27XXX_REG_AI, false);
+	curr = bq27xxx_battery_read_current(di);
 	if (curr < 0) {
 		dev_err(di->dev, "error reading current\n");
 		return curr;
