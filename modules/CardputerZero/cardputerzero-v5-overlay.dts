@@ -70,8 +70,8 @@
                 pinctrl-names = "default";
                 pinctrl-0 = <&tca8418_pins>;
                 interrupt-parent = <&gpio>;
-                interrupts = <27 2>; /* Interrupt IO, falling-edge trigger  */
-                irq-gpios = <&gpio 27 0x00>; /* Interrupt IO, falling-edge trigger */
+                interrupts = <27 8>; /* Interrupt IO, low-level trigger */
+                irq-gpios = <&gpio 27 0x00>;
                     
                 keypad,num-rows = <5>;
                 keypad,num-columns = <10>;
@@ -81,6 +81,9 @@
                 tables-sel-led-gpio = <&m5ioe1 10 1>;
                 capslock-led-gpio   = <&m5ioe1 7 1>;
                 fn-led-gpio         = <&m5ioe1 8 1>;
+                tables-sel-led-mode    = <&m5ioe1 0xBF>;
+                capslock-led-mode    = <&m5ioe1 0xBD>;
+                fn-led-mode    = <&m5ioe1 0xBE>;
 
                 sym-button-code = <0x43>; 
                 fn-button-code = <0x42>;  
@@ -322,6 +325,7 @@
                 simple-audio-card,name = "ES8389-Audio";
                 status = "okay";
 
+                simple-audio-card,hp-det-gpios = <&gpio 17 0>;
 
                 simple-audio-card,aux-devs = <
                     &spk_mute_switch
@@ -415,7 +419,6 @@
         };
     };
 };
-
 
 
 

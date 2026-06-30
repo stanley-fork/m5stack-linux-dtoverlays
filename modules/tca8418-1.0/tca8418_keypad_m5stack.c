@@ -41,6 +41,15 @@
 #include <linux/leds.h>
 #include <linux/workqueue.h>
 
+#define TCA8418_LOG_ENABLE	0
+
+#if TCA8418_LOG_ENABLE
+#define TCA8418_LOG(fmt, ...) \
+	printk(KERN_INFO "tca8418_keypad: " fmt, ##__VA_ARGS__)
+#else
+#define TCA8418_LOG(fmt, ...) do { } while (0)
+#endif
+
 /* TCA8418 hardware limits */
 #define TCA8418_MAX_ROWS	8
 #define TCA8418_MAX_COLS	10
@@ -124,6 +133,9 @@
 #define TCA8418_LED_FAST	2
 #define TCA8418_LED_ON		3
 
+#define M5IOE1_VERSION                  0xBA
+#define M5IOE1_NEW_MODE_VERSION		0xF6
+
 struct tca8418_keypad;
 
 struct tca8418_mode_led {
@@ -131,6 +143,7 @@ struct tca8418_mode_led {
 	struct i2c_client *mode_client;
 	struct regmap *mode_regmap;
 	struct delayed_work blink_work;
+	const char *name;
 	u8 mode_reg;
 	u8 mode;
 	bool has_mode;
@@ -147,6 +160,14 @@ struct tca8418_layer_key {
 	bool locked;
 	bool longpress;
 	bool unlock_release;
+};
+
+
+enum tca8418_active_mode {
+	TCA8418_MODE_NONE,
+	TCA8418_MODE_SYM,
+	TCA8418_MODE_FN,
+	TCA8418_MODE_ASMUX,
 };
 
 struct tca8418_keypad {
@@ -174,6 +195,9 @@ struct tca8418_keypad {
 	ktime_t asmux_last_release;
 	bool asmux_pressed;
 	bool asmux_second_click;
+	bool asmux_oneshot;
+	bool asmux_shift_active;
+	unsigned int asmux_shift_code;
 	bool asmux_locked;
 	bool asmux_unlock_pending;
 	bool asmux_longpress;
@@ -240,6 +264,22 @@ static void tca8418_led_apply_gpio(struct tca8418_mode_led *led)
 		gpiod_set_value_cansleep(led->gpio, led->gpio_on);
 }
 
+static const char *tca8418_led_mode_name(u8 mode)
+{
+	switch (mode) {
+	case TCA8418_LED_OFF:
+		return "off";
+	case TCA8418_LED_BLINK:
+		return "blink";
+	case TCA8418_LED_FAST:
+		return "fast";
+	case TCA8418_LED_ON:
+		return "on";
+	default:
+		return "unknown";
+	}
+}
+
 static void tca8418_led_blink_work(struct work_struct *work)
 {
 	struct tca8418_mode_led *led =
@@ -262,18 +302,36 @@ static void tca8418_led_blink_work(struct work_struct *work)
 static void tca8418_led_set(struct tca8418_mode_led *led, u8 mode)
 {
 	int error;
+	u8 old_mode = led->mode;
 
-	if (led->mode == mode)
+	if (led->mode == mode) {
+		TCA8418_LOG("%s led mode unchanged: %u(%s)\n",
+			    led->name ? led->name : "unknown", mode,
+			    tca8418_led_mode_name(mode));
 		return;
+	}
 
 	led->mode = mode;
 
 	if (led->has_mode) {
+		TCA8418_LOG("%s led mode %u(%s) -> %u(%s), write reg=0x%02x\n",
+			    led->name ? led->name : "unknown", old_mode,
+			    tca8418_led_mode_name(old_mode), mode,
+			    tca8418_led_mode_name(mode), led->mode_reg);
+
 		error = regmap_write(led->mode_regmap, led->mode_reg, mode);
+		TCA8418_LOG("%s led mode write reg=0x%02x value=%u(%s) ret=%d\n",
+			    led->name ? led->name : "unknown", led->mode_reg,
+			    mode, tca8418_led_mode_name(mode), error);
 		if (error < 0)
 			dev_warn(&led->mode_client->dev,
 				 "failed to set led mode reg 0x%02x: %d\n",
 				 led->mode_reg, error);
+	} else {
+		TCA8418_LOG("%s led gpio mode %u(%s) -> %u(%s)\n",
+			    led->name ? led->name : "unknown", old_mode,
+			    tca8418_led_mode_name(old_mode), mode,
+			    tca8418_led_mode_name(mode));
 	}
 
 	cancel_delayed_work_sync(&led->blink_work);
@@ -317,7 +375,7 @@ static void tca8418_layer_update_led(struct tca8418_layer_key *layer)
 	if (layer->longpress)
 		tca8418_led_set(layer->led, TCA8418_LED_FAST);
 	else if (layer->locked)
-		tca8418_led_set(layer->led, TCA8418_LED_ON);
+		tca8418_led_set(layer->led, TCA8418_LED_BLINK);
 	else if (layer->oneshot)
 		tca8418_led_set(layer->led, TCA8418_LED_BLINK);
 	else
@@ -338,10 +396,58 @@ static void tca8418_layer_longpress_work(struct work_struct *work)
 	tca8418_layer_update_led(layer);
 }
 
-static void tca8418_handle_layer_key(struct tca8418_layer_key *layer,
+static void tca8418_layer_deactivate(struct tca8418_layer_key *layer)
+{
+	cancel_delayed_work_sync(&layer->longpress_work);
+
+	layer->pressed = false;
+	layer->oneshot = false;
+	layer->locked = false;
+	layer->longpress = false;
+	layer->unlock_release = false;
+	tca8418_layer_update_led(layer);
+}
+
+static void tca8418_asmux_update_led(struct tca8418_keypad *keypad_data);
+
+static void tca8418_asmux_deactivate(struct tca8418_keypad *keypad_data)
+{
+	cancel_delayed_work_sync(&keypad_data->asmux_longpress_work);
+	cancel_delayed_work_sync(&keypad_data->asmux_blink_off_work);
+
+	if (keypad_data->asmux_locked || keypad_data->asmux_shift_active)
+		tca8418_report_key(keypad_data, keypad_data->asmux_button_code,
+				    KEY_LEFTSHIFT, false);
+
+	keypad_data->asmux_pressed = false;
+	keypad_data->asmux_second_click = false;
+	keypad_data->asmux_oneshot = false;
+	keypad_data->asmux_shift_active = false;
+	keypad_data->asmux_locked = false;
+	keypad_data->asmux_unlock_pending = false;
+	keypad_data->asmux_longpress = false;
+	tca8418_asmux_update_led(keypad_data);
+}
+
+static void tca8418_deactivate_other_modes(struct tca8418_keypad *keypad_data,
+					   enum tca8418_active_mode active)
+{
+	if (active != TCA8418_MODE_SYM)
+		tca8418_layer_deactivate(&keypad_data->sym_key);
+	if (active != TCA8418_MODE_FN)
+		tca8418_layer_deactivate(&keypad_data->fn_key);
+	if (active != TCA8418_MODE_ASMUX)
+		tca8418_asmux_deactivate(keypad_data);
+}
+
+static void tca8418_handle_layer_key(struct tca8418_keypad *keypad_data,
+				     struct tca8418_layer_key *layer,
+				     enum tca8418_active_mode active,
 				     bool pressed)
 {
 	if (pressed) {
+		tca8418_deactivate_other_modes(keypad_data, active);
+
 		layer->pressed = true;
 		layer->longpress = false;
 
@@ -349,11 +455,6 @@ static void tca8418_handle_layer_key(struct tca8418_layer_key *layer,
 			layer->locked = false;
 			layer->oneshot = false;
 			layer->unlock_release = true;
-		} else if (layer->oneshot &&
-			   tca8418_time_before_ms(layer->last_release,
-						  TCA8418_DBLCLICK_MS)) {
-			layer->locked = true;
-			layer->oneshot = false;
 		} else {
 			layer->oneshot = false;
 			schedule_delayed_work(&layer->longpress_work,
@@ -376,7 +477,7 @@ static void tca8418_handle_layer_key(struct tca8418_layer_key *layer,
 	} else if (layer->longpress) {
 		layer->longpress = false;
 	} else if (!layer->locked) {
-		layer->oneshot = true;
+		layer->locked = true;
 		layer->last_release = ktime_get();
 	}
 
@@ -399,7 +500,10 @@ static void tca8418_asmux_update_led(struct tca8418_keypad *keypad_data)
 				TCA8418_LED_FAST);
 	else if (keypad_data->asmux_locked)
 		tca8418_led_set(&keypad_data->capslock_led_ctl,
-				TCA8418_LED_ON);
+				TCA8418_LED_BLINK);
+	else if (keypad_data->asmux_oneshot)
+		tca8418_led_set(&keypad_data->capslock_led_ctl,
+				TCA8418_LED_BLINK);
 	else
 		tca8418_led_set(&keypad_data->capslock_led_ctl,
 				keypad_data->capslock_state ? TCA8418_LED_ON :
@@ -412,8 +516,8 @@ static void tca8418_asmux_blink_off_work(struct work_struct *work)
 		container_of(to_delayed_work(work), struct tca8418_keypad,
 			     asmux_blink_off_work);
 
-	if (!keypad_data->asmux_pressed && !keypad_data->asmux_locked &&
-	    !keypad_data->asmux_longpress)
+	if (!keypad_data->asmux_pressed && !keypad_data->asmux_oneshot &&
+	    !keypad_data->asmux_locked && !keypad_data->asmux_longpress)
 		tca8418_asmux_update_led(keypad_data);
 }
 
@@ -434,6 +538,8 @@ static void tca8418_handle_asmux_key(struct tca8418_keypad *keypad_data,
 				     unsigned int scan_code, bool pressed)
 {
 	if (pressed) {
+		tca8418_deactivate_other_modes(keypad_data, TCA8418_MODE_ASMUX);
+
 		cancel_delayed_work_sync(&keypad_data->asmux_blink_off_work);
 		keypad_data->asmux_pressed = true;
 		keypad_data->asmux_longpress = false;
@@ -444,9 +550,7 @@ static void tca8418_handle_asmux_key(struct tca8418_keypad *keypad_data,
 			return;
 		}
 
-		keypad_data->asmux_second_click =
-			tca8418_time_before_ms(keypad_data->asmux_last_release,
-					       TCA8418_DBLCLICK_MS);
+		keypad_data->asmux_oneshot = false;
 
 		tca8418_report_key(keypad_data, scan_code, KEY_LEFTSHIFT, true);
 		schedule_delayed_work(&keypad_data->asmux_longpress_work,
@@ -469,27 +573,44 @@ static void tca8418_handle_asmux_key(struct tca8418_keypad *keypad_data,
 		return;
 	}
 
-	if (keypad_data->asmux_second_click &&
-	    !keypad_data->asmux_longpress) {
-		keypad_data->asmux_second_click = false;
-		keypad_data->asmux_locked = true;
-		tca8418_asmux_update_led(keypad_data);
-		return;
-	}
-
 	keypad_data->asmux_second_click = false;
-	tca8418_report_key(keypad_data, scan_code, KEY_LEFTSHIFT, false);
 
 	if (keypad_data->asmux_longpress) {
+		tca8418_report_key(keypad_data, scan_code, KEY_LEFTSHIFT, false);
 		keypad_data->asmux_longpress = false;
 		tca8418_asmux_update_led(keypad_data);
 	} else {
+		keypad_data->asmux_locked = true;
+		keypad_data->asmux_oneshot = false;
 		keypad_data->asmux_last_release = ktime_get();
-		tca8418_led_set(&keypad_data->capslock_led_ctl,
-				TCA8418_LED_BLINK);
-		schedule_delayed_work(&keypad_data->asmux_blink_off_work,
-				       msecs_to_jiffies(TCA8418_DBLCLICK_MS * 2));
+		tca8418_asmux_update_led(keypad_data);
 	}
+}
+
+static void tca8418_consume_asmux_oneshot(struct tca8418_keypad *keypad_data,
+					  unsigned int scan_code)
+{
+	if (!keypad_data->asmux_oneshot)
+		return;
+
+	keypad_data->asmux_oneshot = false;
+	keypad_data->asmux_shift_active = true;
+	keypad_data->asmux_shift_code = scan_code;
+	cancel_delayed_work_sync(&keypad_data->asmux_blink_off_work);
+	tca8418_report_key(keypad_data, scan_code, KEY_LEFTSHIFT, true);
+	tca8418_asmux_update_led(keypad_data);
+}
+
+static void tca8418_release_asmux_oneshot(struct tca8418_keypad *keypad_data,
+					  unsigned int scan_code)
+{
+	if (!keypad_data->asmux_shift_active ||
+	    keypad_data->asmux_shift_code != scan_code)
+		return;
+
+	keypad_data->asmux_shift_active = false;
+	tca8418_report_key(keypad_data, scan_code, KEY_LEFTSHIFT, false);
+	tca8418_asmux_update_led(keypad_data);
 }
 
 static void tca8418_handle_key_new(struct tca8418_keypad *keypad_data,
@@ -499,12 +620,14 @@ static void tca8418_handle_key_new(struct tca8418_keypad *keypad_data,
 	unsigned short *keymap = input->keycode;
 
 	if (code == keypad_data->fn_key.scan_code) {
-		tca8418_handle_layer_key(&keypad_data->fn_key, state);
+		tca8418_handle_layer_key(keypad_data, &keypad_data->fn_key,
+					 TCA8418_MODE_FN, state);
 		return;
 	}
 
 	if (code == keypad_data->sym_key.scan_code) {
-		tca8418_handle_layer_key(&keypad_data->sym_key, state);
+		tca8418_handle_layer_key(keypad_data, &keypad_data->sym_key,
+					 TCA8418_MODE_SYM, state);
 		return;
 	}
 
@@ -524,6 +647,7 @@ static void tca8418_handle_key_new(struct tca8418_keypad *keypad_data,
 			tca8418_consume_layer_oneshot(&keypad_data->sym_key);
 		}
 
+		tca8418_consume_asmux_oneshot(keypad_data, code);
 		keypad_data->last_keycode[code] = report_code;
 		tca8418_report_key(keypad_data, code, report_code, true);
 	} else {
@@ -534,6 +658,7 @@ static void tca8418_handle_key_new(struct tca8418_keypad *keypad_data,
 
 		keypad_data->last_keycode[code] = 0;
 		tca8418_report_key(keypad_data, code, report_code, false);
+		tca8418_release_asmux_oneshot(keypad_data, code);
 	}
 }
 
@@ -752,6 +877,58 @@ static int tca8418_parse_led_mode(struct device *dev,
 	led->mode_client = client;
 	led->mode_reg = args.args[0] & 0xff;
 	led->has_mode = true;
+	led->name = property;
+
+	TCA8418_LOG("%s parsed led mode target=%s reg=0x%02x\n",
+		    property, dev_name(&client->dev), led->mode_reg);
+
+	return 0;
+}
+
+static int tca8418_read_m5ioe1_version(struct device *dev,
+				       unsigned int *version)
+{
+	static const char * const properties[] = {
+		"fn-led-mode",
+		"capslock-led-mode",
+		"tables-sel-led-mode",
+		"fn-led-gpio",
+		"capslock-led-gpio",
+		"tables-sel-led-gpio",
+	};
+	struct device_node *np = NULL;
+	struct i2c_client *client;
+	struct regmap *regmap;
+	int error;
+	int i;
+
+	if (!dev->of_node)
+		return -ENODEV;
+
+	for (i = 0; i < ARRAY_SIZE(properties); i++) {
+		np = of_parse_phandle(dev->of_node, properties[i], 0);
+		if (np)
+			break;
+	}
+
+	if (!np)
+		return -ENODEV;
+
+	client = of_find_i2c_device_by_node(np);
+	of_node_put(np);
+	if (!client)
+		return -EPROBE_DEFER;
+
+	regmap = dev_get_regmap(&client->dev, NULL);
+	if (!regmap) {
+		put_device(&client->dev);
+		return -EPROBE_DEFER;
+	}
+
+	error = regmap_read(regmap, M5IOE1_VERSION, version);
+	put_device(&client->dev);
+	if (error)
+		return error;
 
 	return 0;
 }
@@ -794,6 +971,7 @@ static int tca8418_keypad_probe(struct i2c_client *client)
 	u32 fn_button_code = -1;
 	u32 asmux_button_code = -1;
 	unsigned int keymap_size;
+	unsigned int m5ioe1_version;
 	int error, row_shift;
 	u8 reg;
 
@@ -839,28 +1017,19 @@ static int tca8418_keypad_probe(struct i2c_client *client)
 	device_property_read_u32(dev, "asmux-button-code", &asmux_button_code);
 	keypad_data->sym_button_code = sym_button_code;
 	keypad_data->fn_button_code = fn_button_code;
-	keypad_data->new_keyboard_mode = device_property_read_bool(dev,
-								   "fn-led-mode");
+	error = tca8418_read_m5ioe1_version(dev, &m5ioe1_version);
+	if (error)
+		return dev_err_probe(dev, error,
+				     "failed to read M5IOE1 version\n");
+
+	keypad_data->new_keyboard_mode =
+		m5ioe1_version >= M5IOE1_NEW_MODE_VERSION;
+	dev_info(dev, "M5IOE1 version 0x%02x, using %s keyboard mode\n",
+		 m5ioe1_version,
+		 keypad_data->new_keyboard_mode ? "new" : "old");
 	keypad_data->sym_key.scan_code = sym_button_code;
 	keypad_data->fn_key.scan_code = fn_button_code;
 	keypad_data->asmux_button_code = asmux_button_code;
-
-	keypad_data->capslock_led_ctl.gpio =
-		devm_gpiod_get_optional(dev, "capslock-led", GPIOD_OUT_LOW);
-	keypad_data->tables_sel_led.gpio =
-		devm_gpiod_get_optional(dev, "tables-sel-led", GPIOD_OUT_LOW);
-	keypad_data->fn_led.gpio =
-		devm_gpiod_get_optional(dev, "fn-led", GPIOD_OUT_LOW);
-
-	if (IS_ERR(keypad_data->capslock_led_ctl.gpio))
-		return dev_err_probe(dev, PTR_ERR(keypad_data->capslock_led_ctl.gpio),
-				     "failed to get capslock led gpio\n");
-	if (IS_ERR(keypad_data->tables_sel_led.gpio))
-		return dev_err_probe(dev, PTR_ERR(keypad_data->tables_sel_led.gpio),
-				     "failed to get table select led gpio\n");
-	if (IS_ERR(keypad_data->fn_led.gpio))
-		return dev_err_probe(dev, PTR_ERR(keypad_data->fn_led.gpio),
-				     "failed to get fn led gpio\n");
 
 	if (keypad_data->new_keyboard_mode) {
 		error = tca8418_parse_led_mode(dev, &keypad_data->tables_sel_led,
@@ -880,6 +1049,23 @@ static int tca8418_keypad_probe(struct i2c_client *client)
 		if (error)
 			return dev_err_probe(dev, error,
 					     "failed to parse fn-led-mode\n");
+	} else {
+		keypad_data->capslock_led_ctl.gpio =
+			devm_gpiod_get_optional(dev, "capslock-led", GPIOD_OUT_LOW);
+		keypad_data->tables_sel_led.gpio =
+			devm_gpiod_get_optional(dev, "tables-sel-led", GPIOD_OUT_LOW);
+		keypad_data->fn_led.gpio =
+			devm_gpiod_get_optional(dev, "fn-led", GPIOD_OUT_LOW);
+
+		if (IS_ERR(keypad_data->capslock_led_ctl.gpio))
+			return dev_err_probe(dev, PTR_ERR(keypad_data->capslock_led_ctl.gpio),
+					     "failed to get capslock led gpio\n");
+		if (IS_ERR(keypad_data->tables_sel_led.gpio))
+			return dev_err_probe(dev, PTR_ERR(keypad_data->tables_sel_led.gpio),
+					     "failed to get table select led gpio\n");
+		if (IS_ERR(keypad_data->fn_led.gpio))
+			return dev_err_probe(dev, PTR_ERR(keypad_data->fn_led.gpio),
+					     "failed to get fn led gpio\n");
 	}
 
 	INIT_DELAYED_WORK(&keypad_data->tables_sel_led.blink_work,

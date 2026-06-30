@@ -76,6 +76,7 @@
 #define M5IOE1_RTC_RAM_S                0x70
 #define M5IOE1_RTC_RAM_E                0x8F
 #define M5IOE1_PULSE                    0x90
+#define M5IOE1_VERSION                  0xBA
 #define M5IOE1_READY                    0xB0
 #define M5IOE1_HW_VERSION               0xB8
 #define M5IOE1_OFF_TIME                 0xB2

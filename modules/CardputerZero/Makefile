@@ -77,10 +77,15 @@ config_setup:
 	python3 /opt/rpi-config.py --no-backup section-del all dtoverlay lsm6ds3tr-overlay
 	python3 /opt/rpi-config.py --no-backup section-del all dtoverlay pwm-ir-tx,gpio_pin=12,func=4
 	python3 /opt/rpi-config.py --no-backup section-del all dtoverlay cardputerzero-overlay
+	python3 /opt/rpi-config.py --no-backup section-del all dtoverlay cardputerzero-v3-overlay
+	python3 /opt/rpi-config.py --no-backup section-del all dtoverlay cardputerzero-v5-overlay
 	python3 /opt/rpi-config.py --no-backup section-del all dtoverlay camera-gpio16-high-overlay
 	python3 /opt/rpi-config.py --no-backup section-del all dtoverlay bq27220
+	python3 /opt/rpi-config.py --no-backup section-del all dtoverlay bq27220_v3
+	python3 /opt/rpi-config.py --no-backup section-del all dtoverlay bq27220_v5
 	python3 /opt/rpi-config.py --no-backup section-del all dtoverlay gpio-ir,gpio_pin=13,gpio_pull=up
 	python3 /opt/rpi-config.py --no-backup section-del all dtoverlay gpio-ir-tx,gpio_pin=12
+	python3 /opt/rpi-config.py --no-backup section-del all dtoverlay bmi270_overlay
 	python3 /opt/rpi-config.py --no-backup section-del all dtoverlay bmi270_bmm150_overlay
 
 ifeq ($(CONFIG_CARDPUTERO_V0_5),y)

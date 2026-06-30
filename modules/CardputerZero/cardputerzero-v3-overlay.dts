@@ -81,8 +81,8 @@
                 pinctrl-names = "default";
                 pinctrl-0 = <&tca8418_pins>;
                 interrupt-parent = <&gpio>;
-                interrupts = <27 2>; /* Interrupt IO, falling-edge trigger  */
-                irq-gpios = <&gpio 27 0x00>; /* Interrupt IO, falling-edge trigger */
+                interrupts = <27 8>; /* Interrupt IO, low-level trigger */
+                irq-gpios = <&gpio 27 0x00>;
                     
                 keypad,num-rows = <5>;
                 keypad,num-columns = <10>;
@@ -396,7 +396,6 @@
         };
     };
 };
-
 
 
 
