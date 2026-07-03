@@ -1,0 +1,16 @@
+[Unit]
+Description=Load static splash image on SPI LCD
+DefaultDependencies=no
+After=systemd-udev-trigger.service systemd-udevd.service systemd-modules-load.service
+Before=plymouth-start.service
+ConditionPathExists=/usr/sbin/fb_load
+ConditionVirtualization=!container
+IgnoreOnIsolate=true
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/fb_load --keep-open
+RemainAfterExit=yes
+
+[Install]
+WantedBy=sysinit.target
