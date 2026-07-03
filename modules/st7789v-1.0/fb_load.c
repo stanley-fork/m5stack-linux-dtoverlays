@@ -20,7 +20,11 @@
 #define DEFAULT_BMP NULL
 #define DEFAULT_DRM "/dev/dri/card1"
 #define DEFAULT_FB "/dev/fb_lcd"
-#define APP_LAUNCH_PATH "/usr/share/APPLaunch/bin/M5CardputerZero-APPLaunch"
+
+static const char *const watched_app_paths[] = {
+	"/usr/share/APPLaunch/bin/M5CardputerZero-APPLaunch",
+	"/usr/share/APPLaunch/bin/LaunchWizard",
+};
 
 #define BI_RGB       0
 #define BI_BITFIELDS 3
@@ -1530,14 +1534,15 @@ static int process_exe_matches(pid_t pid, const char *exe_path)
 	return !strcmp(actual, target);
 }
 
-static int app_launch_is_running(void)
+static const char *watched_app_is_running(void)
 {
 	DIR *proc;
 	struct dirent *entry;
+	size_t i;
 
 	proc = opendir("/proc");
 	if (!proc)
-		return 0;
+		return NULL;
 
 	while ((entry = readdir(proc))) {
 		char *end;
@@ -1548,38 +1553,44 @@ static int app_launch_is_running(void)
 		if (errno || *end || value <= 0)
 			continue;
 
-		if (process_exe_matches((pid_t)value, APP_LAUNCH_PATH)) {
-			closedir(proc);
-			return 1;
+		for (i = 0; i < sizeof(watched_app_paths) / sizeof(watched_app_paths[0]); i++) {
+			if (process_exe_matches((pid_t)value, watched_app_paths[i])) {
+				closedir(proc);
+				return watched_app_paths[i];
+			}
 		}
 	}
 
 	closedir(proc);
-	return 0;
+	return NULL;
 }
 
-static void wait_until_app_launch_starts(const struct image *img)
+static void wait_until_watched_app_starts(const struct image *img)
 {
-	log_message("waiting for %s to start", APP_LAUNCH_PATH);
+	const char *app_path;
 
-	while (!app_launch_is_running())
+	log_message("waiting for APPLaunch application to start");
+
+	while (!(app_path = watched_app_is_running()))
 		usleep(200000);
 
 	log_message("%s is running, writing logo to %s before exit",
-		APP_LAUNCH_PATH, DEFAULT_FB);
+		app_path, DEFAULT_FB);
 	write_fbdev_logo(DEFAULT_FB, img);
 }
 
-static int open_drm_until_app_launch(const char *path)
+static int open_drm_until_watched_app(const char *path)
 {
 	int logged_missing = 0;
 
 	for (;;) {
+		const char *app_path;
 		int fd;
 
-		if (app_launch_is_running()) {
+		app_path = watched_app_is_running();
+		if (app_path) {
 			log_message("%s is already running, exiting before opening %s",
-				APP_LAUNCH_PATH, path);
+				app_path, path);
 			return -1;
 		}
 
@@ -1588,8 +1599,8 @@ static int open_drm_until_app_launch(const char *path)
 			return fd;
 
 		if (!logged_missing || errno != ENOENT) {
-			log_message("open %s failed: %s; retrying until %s starts",
-				path, strerror(errno), APP_LAUNCH_PATH);
+			log_message("open %s failed: %s; retrying until watched app starts",
+				path, strerror(errno));
 			logged_missing = 1;
 		}
 
@@ -1645,7 +1656,7 @@ int main(int argc, char **argv)
 	if (transform_image(&src, &rotated) < 0)
 		goto out;
 
-	fd = open_drm_until_app_launch(drm_path);
+	fd = open_drm_until_watched_app(drm_path);
 	if (fd < 0) {
 		write_fbdev_logo(DEFAULT_FB, &rotated);
 		ret = 0;
@@ -1671,7 +1682,7 @@ int main(int argc, char **argv)
 	log_message("%s: DRM logo displayed", drm_path);
 
 	if (keep_open)
-		wait_until_app_launch_starts(&rotated);
+		wait_until_watched_app_starts(&rotated);
 
 	ret = 0;
 
