@@ -328,17 +328,24 @@
             sound {
                 pinctrl-names = "default";
                 pinctrl-0 = <&sound_phones_pins>;
-                compatible = "simple-audio-card";
+                compatible = "m5stack,cardputerzero-audio";
                 simple-audio-card,name = "ES8389-Audio";
                 status = "okay";
 
                 simple-audio-card,hp-det-gpios = <&gpio 17 0>;
+                m5stack,hp-mute-pins = "Speaker";
+                m5stack,hp-absent-controls =
+                    "PGAL Select=Line 1P",
+                    "PGAR Select=Line 1N";
+                m5stack,hp-present-controls =
+                    "PGAL Select=Line 2P",
+                    "PGAR Select=Line 2N";
 
                 simple-audio-card,aux-devs = <
                     &spk_mute_switch
                 >;
                 simple-audio-card,widgets =
-                    "Headphone", "Headphone Jack",
+                    "Headphone", "Headphones",
                     "Microphone", "Mic Jack",
                     "Speaker", "Speaker";
 
@@ -347,16 +354,14 @@
                     "Speaker";
 
                 simple-audio-card,routing =
-                    "Headphone Jack", "HPOL",
-                    "Headphone Jack", "HPOR",
+                    "Headphones", "HPOL",
+                    "Headphones", "HPOR",
 
                     "INPUT1", "Mic Jack",
                     "INPUT2", "Mic Jack",
 
                     "Speaker Switch INL", "HPOL",
-                    "Speaker Switch INR", "HPOR",
-                    "Speaker", "Speaker Switch OUTL",
-                    "Speaker", "Speaker Switch OUTR";
+                    "Speaker", "Speaker Switch OUTL";
                 simple-audio-card,dai-link {
                     format = "i2s";
                     bitclock-master = <&dailink0_master>;
@@ -426,9 +431,6 @@
         };
     };
 };
-
-
-
 
 
 

@@ -2108,10 +2108,11 @@ static void bq27220_battery_program_config(struct bq27xxx_device_info *di,
 	BQ27XXX_MSLEEP(50);
 
 	if (capacity_mah != -EINVAL) {
-		bq27220_battery_update_dm_reg(di, "full-charge-capacity",
-					      BQ27220_DM_FULL_CHARGE_CAP,
-					      capacity_mah, 0, 32767,
-					      &updated);
+		/*
+		 * Full Charge Capacity is learned by the gauge after qualified
+		 * discharge cycles. Do not reset it from devicetree on every
+		 * probe, or the learned FCC will be lost across driver reloads.
+		 */
 		bq27220_battery_update_dm_reg(di, "design-capacity",
 					      BQ27220_DM_DESIGN_CAPACITY,
 					      capacity_mah, 0, 32767,

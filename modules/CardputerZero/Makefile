@@ -1,15 +1,15 @@
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build
 EXTRADIR ?= /lib/modules/$(shell uname -r)/extra
 ROOTFSPATH ?=
-PWD := $(shell pwd)
-ARCH := $(shell uname -m)
+PWD := $(CURDIR)
+ARCH ?= $(shell uname -m)
 
 # ifndef CONFIG_CARDPUTERO_V0_3
 # CONFIG_CARDPUTERO_V0_5=y
 # endif
 
 
-Target_ko := powerfail_suo
+kermel_ko := powerfail_suo.ko cardputerzero-audio.ko
 
 # Multiple dts targets, separated by spaces; omit the .dts suffix
 Target_dts := cardputerzero-v5-overlay cardputerzero-v3-overlay spk-gpio24-high-overlay spi0-spidev2-gpio22-overlay camera-gpio16-high-overlay camera-py12-high-overlay mic-pyg4-high-overlay
@@ -22,21 +22,12 @@ export CONFIG_CARDPUTERO_V0_5
 export DTS_CC_FLAGE
 endif
 
+obj-m += $(patsubst %.ko,%.o,$(kermel_ko))
 
-# Module name
-ifneq ($(strip $(Target_ko)),)
-obj-m += $(Target_ko).o
-endif
-ifneq ($(strip $(Target_ko)),)
-all: $(Target_dtbo) $(Target_ko).ko
-else
-all: $(Target_dtbo)
-endif
+all: $(Target_dtbo) kermel_ko_t
 
-ifneq ($(strip $(Target_ko)),)
-$(Target_ko).ko: $(Target_ko).c
+kermel_ko_t: $(patsubst %.ko,%.c,$(kermel_ko))
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) ARCH=$(ARCH) modules
-endif
 
 %.dtbo: %.dts
 	cpp -nostdinc -undef -x assembler-with-cpp $(DTS_CC_FLAGE) $< $<.tmp
@@ -45,13 +36,16 @@ endif
 install_dts: $(Target_dtbo)
 	cp $(Target_dtbo) /boot/firmware/overlays/
 
+install_ko: $(Target_dtbo)
+	mkdir -p $(EXTRADIR)
+	cp ./*.ko $(EXTRADIR) || true
+	if [ "$(KERNELDIR)" = "/lib/modules/$(shell uname -r)/build" ]; then depmod -a ; fi
+
 clean:
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) clean
 	rm -f $(Target_dtbo) *.tmp
 
-install: all install_dts
-	mkdir -p $(EXTRADIR)
-	cp ./*.ko $(EXTRADIR) || true
+install: all install_dts install_ko
 	if [ -d '../bq27220-1.0' ] ; then $(MAKE) -C ../bq27220-1.0 install ; fi
 	if [ -d '../es8389-1.0' ] ; then $(MAKE) -C ../es8389-1.0 install ; fi
 	if [ -d '../m5ioe1-1.0' ] ; then $(MAKE) -C ../m5ioe1-1.0 install ; fi
