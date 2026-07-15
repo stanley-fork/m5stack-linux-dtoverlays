@@ -25,6 +25,11 @@
                     brcm,function = <0>;
                     brcm,pull = <2>;
             };
+            grove_fun_pins: grove_fun_pins {
+                    brcm,pins = <4>;
+                    brcm,function = <1>;
+                    brcm,pull = <0>;
+            };
         };
     };
 
@@ -46,8 +51,19 @@
                     ngpios = <16>;
                     
                     #pwm-cells = <3>;
-                    
                     status = "okay";
+
+                    ext_usb_gpio_fun_pin: IO1 {
+                            bias-disable;
+                    };
+
+                    grove_5v_out_pin: IO4 {
+                            bias-disable;
+                    };
+
+                    ext_5v_out_pin: IO13 {
+                            bias-disable;
+                    };
             };
 
             es8390: es8390@10 {
@@ -322,6 +338,39 @@
                 enable-gpios = <&gpio 24 0>;
 
                 sound-name-prefix = "Speaker Switch";
+            };
+
+            leds {
+                compatible = "gpio-leds";
+                pinctrl-names = "default";
+                pinctrl-0 = <&grove_fun_pins>,
+                            <&ext_usb_gpio_fun_pin>,
+                            <&ext_5v_out_pin>,
+                            <&grove_5v_out_pin>;
+
+                grove_fun {
+                    label = "grove_fun";
+                    gpios = <&gpio 4 0>;
+                    default-state = "off";
+                };
+
+                ext_usb_gpio_fun {
+                    label = "ext_usb_gpio_fun";
+                    gpios = <&m5ioe1 0 0>;
+                    default-state = "off";
+                };
+
+                ext_5v_out {
+                    label = "ext_5v_out";
+                    gpios = <&m5ioe1 12 0>;
+                    default-state = "off";
+                };
+
+                grove_5v_out {
+                    label = "grove_5v_out";
+                    gpios = <&m5ioe1 3 0>;
+                    default-state = "off";
+                };
             };
 
 

@@ -41,6 +41,10 @@ install_ko: $(Target_dtbo)
 	cp ./*.ko $(EXTRADIR) || true
 	if [ "$(KERNELDIR)" = "/lib/modules/$(shell uname -r)/build" ]; then depmod -a ; fi
 
+install_led_permissions:
+	mkdir -p $(ROOTFSPATH)/usr/lib/tmpfiles.d/
+	install -m 0644 cardputerzero-leds.conf $(ROOTFSPATH)/usr/lib/tmpfiles.d/cardputerzero-leds.conf
+
 clean:
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) clean
 	rm -f $(Target_dtbo) *.tmp
@@ -57,7 +61,7 @@ ifeq ($(CONFIG_CARDPUTERO_V0_5),y)
 endif
 	echo "ok"
 
-config_setup:
+config_setup: install_led_permissions
 	[ -f "/opt/rpi-config.py" ] || curl -fsSL -o "/opt/rpi-config.py" -L "https://gist.githubusercontent.com/dianjixz/16b2fabbc4a2a573a7c10f212d87f282/raw/rpi-config.py"
 	python3 /opt/rpi-config.py --no-backup set camera_auto_detect 0
 	python3 /opt/rpi-config.py --no-backup add dtoverlay imx219
@@ -97,4 +101,4 @@ endif
 	python3 /opt/rpi-config.py --no-backup section-add all dtoverlay gpio-ir-tx,gpio_pin=12
 
 
-.PHONY: all clean install install_dts config_setup
+.PHONY: all clean install install_dts install_ko install_led_permissions config_setup
