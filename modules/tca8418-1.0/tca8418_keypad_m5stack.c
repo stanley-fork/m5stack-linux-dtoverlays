@@ -435,9 +435,11 @@ static void tca8418_deactivate_other_modes(struct tca8418_keypad *keypad_data,
 {
 	if (active != TCA8418_MODE_SYM)
 		tca8418_layer_deactivate(&keypad_data->sym_key);
-	if (active != TCA8418_MODE_FN)
+
+	/* Fn is a layer selector and may be combined with Shift/ASMUX. */
+	if (active != TCA8418_MODE_FN && active != TCA8418_MODE_ASMUX)
 		tca8418_layer_deactivate(&keypad_data->fn_key);
-	if (active != TCA8418_MODE_ASMUX)
+	if (active != TCA8418_MODE_ASMUX && active != TCA8418_MODE_FN)
 		tca8418_asmux_deactivate(keypad_data);
 }
 
@@ -629,6 +631,22 @@ static void tca8418_consume_asmux_oneshot(struct tca8418_keypad *keypad_data,
 	tca8418_asmux_update_led(keypad_data);
 }
 
+static void tca8418_activate_asmux_hold(struct tca8418_keypad *keypad_data)
+{
+	if (!keypad_data->asmux_pressed || keypad_data->asmux_locked ||
+	    keypad_data->asmux_longpress)
+		return;
+
+	cancel_delayed_work_sync(&keypad_data->asmux_longpress_work);
+	if (keypad_data->asmux_longpress)
+		return;
+
+	keypad_data->asmux_longpress = true;
+	tca8418_report_key(keypad_data, keypad_data->asmux_button_code,
+			    KEY_LEFTSHIFT, true);
+	tca8418_asmux_update_led(keypad_data);
+}
+
 static void tca8418_release_asmux_oneshot(struct tca8418_keypad *keypad_data,
 					  unsigned int scan_code)
 {
@@ -675,6 +693,7 @@ static void tca8418_handle_key_new(struct tca8418_keypad *keypad_data,
 			tca8418_consume_layer_oneshot(&keypad_data->sym_key);
 		}
 
+		tca8418_activate_asmux_hold(keypad_data);
 		tca8418_consume_asmux_oneshot(keypad_data, code);
 		keypad_data->last_keycode[code] = report_code;
 		tca8418_report_key(keypad_data, code, report_code, true);
