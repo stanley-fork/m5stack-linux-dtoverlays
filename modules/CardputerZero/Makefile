@@ -70,7 +70,7 @@ config_setup: install_led_permissions
 	python3 /opt/rpi-config.py --no-backup set dtparam=spi on
 	python3 /opt/rpi-config.py --no-backup set dtparam=audio off
 	python3 /opt/rpi-config.py --no-backup section-set all enable_uart 1
-	python3 /opt/rpi-config.py --no-backup section-add dtoverlay dwc2
+	python3 /opt/rpi-config.py --no-backup section-add all dtoverlay dwc2
 
 	python3 /opt/rpi-config.py --no-backup section-del all dtoverlay spk-gpio24-high-overlay
 	python3 /opt/rpi-config.py --no-backup section-del all dtoverlay lsm6ds3tr-overlay
