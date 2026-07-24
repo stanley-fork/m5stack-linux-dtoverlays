@@ -438,9 +438,10 @@
             #address-cells = <1>;
             #size-cells = <0>;
 
-            num-cs = <2>;
+            num-cs = <3>;
             cs-gpios = <&gpio 8 1>,
-                        <&gpio 7 1>;
+                        <&gpio 7 1>,
+                        <&gpiospi 0 1>;
 
             display: st7789v@0 {
                 compatible = "cardputerzero,st7789v_lcd", "panel-mipi-dbi-m5stack";
@@ -477,6 +478,23 @@
         target = <&spidev0>;
         __overlay__ {
             status = "disabled";
+        };
+    };
+
+    fragment@6 {
+        target-path = "/";
+        __overlay__ {
+            gpiospi: gpio-spi-cs {
+                compatible = "m5stack,gpio-forwarder";
+                gpio-controller;
+                #gpio-cells = <2>;
+
+                /* GPIO_ACTIVE_HIGH: forwarding uses raw GPIO values. */
+                backing-gpios = <&gpio 22 0>;
+                spi-bus-num = <0>;
+                spi-chip-select = <2>;
+                status = "okay";
+            };
         };
     };
 };

@@ -9,7 +9,7 @@ ARCH ?= $(shell uname -m)
 # endif
 
 
-kermel_ko := powerfail_suo.ko cardputerzero-audio.ko
+kermel_ko := powerfail_suo.ko cardputerzero-audio.ko gpio-forwarder.ko
 
 # Multiple dts targets, separated by spaces; omit the .dts suffix
 Target_dts := cardputerzero-v5-overlay cardputerzero-v3-overlay spk-gpio24-high-overlay spi0-spidev2-gpio22-overlay camera-gpio16-high-overlay camera-py12-high-overlay mic-pyg4-high-overlay
